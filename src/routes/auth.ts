@@ -267,4 +267,74 @@ router.get('/logout', async (c) => {
   return c.json({ message: 'Logged out successfully' });
 });
 
+router.post('/auth/mock', async (c) => {
+  if (c.env.ENVIRONMENT === 'production') {
+    throw new Error('Mock login is not available in production');
+  }
+
+  const body = await c.req.json();
+  const mockId = body.id || 'mock_user_123';
+  const mockName = body.name || 'Mock User';
+  const mockEmail = body.email || 'mock@example.com';
+
+  let user = await c.env.DB.prepare(
+    'SELECT * FROM users WHERE social_id = ? AND social_provider = ?'
+  )
+    .bind(mockId, 'facebook')
+    .first();
+
+  if (!user) {
+    const result = await c.env.DB.prepare(
+      `INSERT INTO users (social_id, social_provider, name, email, avatar_url, is_admin)
+         VALUES (?, ?, ?, ?, ?, 0)`
+    )
+      .bind(mockId, 'facebook', mockName, mockEmail, null)
+      .run();
+
+    user = await c.env.DB.prepare('SELECT * FROM users WHERE id = ?')
+      .bind(result.meta.last_row_id)
+      .first();
+  }
+
+  if (!user) {
+    throw new Error('Failed to create mock user');
+  }
+
+  const jwtManager = new JWTManager(c.env.JWT_SECRET);
+
+  const userData = {
+    id: user.id as number,
+    social_id: user.social_id as string,
+    social_provider: user.social_provider as 'facebook' | 'instagram',
+    name: user.name as string,
+    email: user.email as string,
+    avatar_url: user.avatar_url as string | undefined,
+    is_admin: (user.is_admin as unknown as number) === 1,
+    created_at: user.created_at as number,
+    updated_at: user.updated_at as number,
+  };
+
+  const tokens = await jwtManager.generateTokens(userData);
+
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+  await c.env.DB.prepare(
+    `INSERT INTO refresh_tokens (user_id, token, expires_at, created_at)
+     VALUES (?, ?, ?, datetime('now'))`
+  )
+    .bind(user.id, tokens.refresh, expiresAt)
+    .run();
+
+  const sessionManager = new SessionManager(c.env.DB);
+  await sessionManager.createSession(user.id as number, { ...userData });
+
+  return c.json({
+    user: userData,
+    tokens: {
+      access: tokens.access,
+      refresh: tokens.refresh,
+    },
+  });
+});
+
 export default router;

@@ -10,6 +10,7 @@ export interface Env {
   BASE_URL: string;
   FRONTEND_URL: string;
   CORS_ORIGINS: string;
+  ENVIRONMENT?: string;
 }
 
 export interface User {
