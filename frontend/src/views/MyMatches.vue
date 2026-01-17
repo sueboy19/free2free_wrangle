@@ -347,9 +347,8 @@ const loadMatches = async () => {
   try {
     isLoading.value = true;
 
-    // 載入所有配對，然後分類
     const response = await ApiService.getMatches();
-    const allMatches = response.data;
+    const allMatches = Array.isArray(response.data?.data) ? response.data.data : [];
 
     // 分類為我開局的配對
     organizedMatches.value = allMatches.filter(

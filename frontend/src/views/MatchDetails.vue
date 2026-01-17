@@ -120,7 +120,8 @@
           <h2 class="text-lg font-semibold text-gray-900 mb-3">開局者資訊</h2>
           <div class="flex items-center space-x-4">
             <img
-              :src="match.organizer?.avatar_url || '/default-avatar.png'"
+              :src="match.organizer?.avatar_url || '/default-avatar.svg'"
+              @error="handleImageError"
               :alt="match.organizer?.name"
               class="h-12 w-12 rounded-full object-cover"
             />
@@ -131,9 +132,11 @@
           </div>
         </div>
 
-        <!-- 參與者列表 (如果是開局者) -->
-        <div v-if="isOrganizer" class="card">
-          <h2 class="text-lg font-semibold text-gray-900 mb-3">參與者管理</h2>
+        <!-- 參與者列表 (如果是開局者或參與者) -->
+        <div v-if="isOrganizer || hasOrganizerAccess" class="card">
+          <h2 class="text-lg font-semibold text-gray-900 mb-3">
+            {{ isOrganizer ? '參與者管理' : '已申請的參與者' }}
+          </h2>
           <div v-if="participants.length === 0" class="text-center py-8">
             <p class="text-gray-500">還沒有人申請參與</p>
           </div>
@@ -145,7 +148,8 @@
             >
               <div class="flex items-center space-x-3">
                 <img
-                  :src="participant.user?.avatar_url || '/default-avatar.png'"
+                  :src="participant.user?.avatar_url || '/default-avatar.svg'"
+                  @error="handleImageError"
                   :alt="participant.user?.name"
                   class="h-8 w-8 rounded-full object-cover"
                 />
@@ -155,7 +159,8 @@
                 </div>
               </div>
 
-              <div class="flex items-center space-x-2">
+              <!-- 開局者可以看到狀態和操作按鈕，參與者不能 -->
+              <div v-if="isOrganizer" class="flex items-center space-x-2">
                 <span
                   :class="[
                     'px-2 py-1 text-xs font-semibold rounded-full',
@@ -306,16 +311,26 @@ const formatDate = (date: string | number) => {
   return format(d, 'MM月dd日 HH:mm', { locale: zhTW });
 };
 
+// 處理圖片載入錯誤
+const handleImageError = (event: Event) => {
+  const target = event.target as HTMLImageElement;
+  target.src = '/default-avatar.svg';
+};
+
 // 載入配對詳情
 const loadMatchDetails = async () => {
   try {
     isLoading.value = true;
     const matchId = parseInt(route.params.id as string);
 
-    // 這裡應該有一個 API 來獲取單個配對的詳情
-    // 現在先使用現有的 API
+    if (isNaN(matchId)) {
+      toast.error('無效的配對 ID');
+      router.push('/matches');
+      return;
+    }
+
     const response = await ApiService.getMatches();
-    const allMatches = response.data;
+    const allMatches = Array.isArray(response.data?.data) ? response.data.data : [];
 
     match.value = allMatches.find((m: any) => m.id === matchId);
 
@@ -325,12 +340,13 @@ const loadMatchDetails = async () => {
       return;
     }
 
-    // 如果是開局者，載入參與者列表
-    if (isOrganizer.value) {
-      // 這裡需要一個 API 來獲取參與者列表
-      // 暫時使用空的數組
-      participants.value = [];
-    }
+    // 載入參與者列表
+    const participantsResponse = await ApiService.getMatchParticipants(matchId);
+    const responseData = participantsResponse.data as any;
+    participants.value = Array.isArray(responseData?.data) ? responseData.data : [];
+
+    // 檢查是否有權限看到所有參與者
+    const hasOrganizerAccess = responseData?.is_organizer || false;
   } catch (error) {
     console.error('載入配對詳情失敗:', error);
     toast.error('載入配對詳情失敗');
@@ -342,8 +358,14 @@ const loadMatchDetails = async () => {
 // 參與配對
 const joinMatch = async () => {
   try {
-    isJoining.value = true;
     const matchId = parseInt(route.params.id as string);
+
+    if (!matchId || isNaN(matchId)) {
+      toast.error('無效的配對 ID');
+      return;
+    }
+
+    isJoining.value = true;
     await ApiService.joinMatch(matchId);
     toast.success('成功參與配對！');
     await loadMatchDetails(); // 重新載入

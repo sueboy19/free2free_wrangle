@@ -198,6 +198,22 @@ const formatDate = (date: string | number) => {
   return format(d, 'MM月dd日 HH:mm', { locale: zhTW });
 };
 
+// 載入精選配對
+const loadFeaturedMatches = async () => {
+  try {
+    isLoading.value = true;
+    const response = await ApiService.getMatches();
+    featuredMatches.value = Array.isArray(response.data?.data)
+      ? response.data.data.slice(0, 6)
+      : [];
+  } catch (error) {
+    console.error('載入配對失敗:', error);
+    featuredMatches.value = [];
+  } finally {
+    isLoading.value = false;
+  }
+};
+
 onMounted(() => {
   if (authStore.isAuthenticated) {
     loadFeaturedMatches();

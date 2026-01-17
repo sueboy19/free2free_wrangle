@@ -60,7 +60,8 @@
           <!-- 頭像 -->
           <div class="flex-shrink-0">
             <img
-              :src="authStore.user?.avatar_url || '/default-avatar.png'"
+              :src="authStore.user?.avatar_url || '/default-avatar.svg'"
+              @error="handleImageError"
               :alt="authStore.user?.name"
               class="h-24 w-24 rounded-full object-cover"
             />
@@ -188,15 +189,17 @@ const formatDate = (date: string | number) => {
   return format(d, 'MM月dd日 HH:mm', { locale: zhTW });
 };
 
+// 處理圖片載入錯誤
+const handleImageError = (event: Event) => {
+  const target = event.target as HTMLImageElement;
+  target.src = '/default-avatar.svg';
+};
+
 // 載入統計資料
 const loadStats = async () => {
   try {
-    const [matchesResponse, pastMatchesResponse] = await Promise.all([
-      ApiService.getMatches(),
-      ApiService.getPastMatches(),
-    ]);
-
-    const allMatches = [...matchesResponse.data, ...pastMatchesResponse.data];
+    const matchesResponse = await ApiService.getMatches();
+    const allMatches = Array.isArray(matchesResponse.data?.data) ? matchesResponse.data.data : [];
 
     stats.value.organizedCount = allMatches.filter(
       (match: any) => match.organizer_id === authStore.user?.id

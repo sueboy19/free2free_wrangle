@@ -47,6 +47,26 @@ router.post('/matches/:id/join', authMiddleware, async (c) => {
   const user = c.get('user' as never);
   const matchId = c.req.param('id');
 
+  const existingParticipant = await c.env.DB.prepare(
+    'SELECT * FROM match_participants WHERE match_id = ? AND user_id = ?'
+  )
+    .bind(matchId, (user as any).id)
+    .first();
+
+  if (existingParticipant) {
+    throw new Error('您已經參與過此配對');
+  }
+
+  const match = await c.env.DB.prepare('SELECT * FROM matches WHERE id = ?').bind(matchId).first();
+
+  if (!match) {
+    throw new Error('配對不存在');
+  }
+
+  if (match.organizer_id === (user as any).id) {
+    throw new Error('開局者不能參與自己的配對');
+  }
+
   const result = await c.env.DB.prepare(
     `INSERT INTO match_participants (match_id, user_id, status, joined_at)
        VALUES (?, ?, 'pending', datetime('now'))`

@@ -260,7 +260,7 @@ router.get('/profile', authMiddleware, async (c) => {
     throw new Error('Authentication required');
   }
 
-  return c.json({ user });
+  return c.json(user);
 });
 
 router.get('/logout', async (c) => {

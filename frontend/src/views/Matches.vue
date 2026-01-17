@@ -150,7 +150,7 @@
           </div>
 
           <!-- 操作按鈕 -->
-          <div class="flex space-x-2">
+          <div class="flex space-x-2" v-if="match.id">
             <router-link
               :to="`/matches/${match.id}`"
               class="flex-1 btn-secondary text-center text-sm"
@@ -158,12 +158,16 @@
               查看詳情
             </router-link>
             <button
+              v-if="!hasParticipated(match.id) && !isMatchOrganizer(match.id)"
               @click="joinMatch(match.id)"
               :disabled="isJoining"
               class="flex-1 btn-primary text-sm"
             >
               {{ isJoining ? '加入中...' : '參與配對' }}
             </button>
+            <span v-if="hasParticipated(match.id)" class="flex-1 py-3 text-center text-sm">
+              {{ getParticipationLabel(match.id) }}
+            </span>
           </div>
         </div>
       </div>
@@ -189,10 +193,20 @@ const isJoining = ref(false);
 const searchQuery = ref('');
 const selectedLocation = ref('');
 const selectedDate = ref('');
+const userParticipations = ref<Map<number, { status: string }>>(new Map());
 
 // 篩選後的配對
 const filteredMatches = computed(() => {
   let filtered = matches.value;
+
+// 過濾開局者的配對（已經參與過的）
+const filteredMatches = computed(() => {
+  let filtered = matches.value;
+
+  // 過濾開局者自己的配對
+  filtered = filtered.filter(
+    (match) => match.organizer_id !== authStore.user?.id
+  );
 
   // 搜尋篩選
   if (searchQuery.value) {
@@ -222,6 +236,41 @@ const filteredMatches = computed(() => {
 
   return filtered;
 });
+  }
+
+  return filtered;
+});
+
+// 計算用戶對每個配對的參與狀態
+const getParticipationStatus = (matchId: number) => {
+  return userParticipations.value.get(matchId) || null;
+};
+
+const hasParticipated = computed(() => (matchId: number) => {
+  const status = getParticipationStatus(matchId);
+  return status && (status === 'approved' || status === 'rejected');
+});
+
+const isApproved = computed(() => (matchId: number) => {
+  const status = getParticipationStatus(matchId);
+  return status === 'approved';
+});
+
+const isRejected = computed(() => (matchId: number) => {
+  const status = getParticipationStatus(matchId);
+  return status === 'rejected';
+});
+
+const isPending = computed(() => (matchId: number) => {
+  const status = getParticipationStatus(matchId);
+  return status === 'pending';
+});
+
+// 判斷是否為開局者
+const isMatchOrganizer = computed(() => (matchId: number) => {
+  const match = matches.value.find((m) => m.id === matchId);
+  return match?.organizer_id === authStore.user?.id;
+});
 
 // 格式化日期
 const formatDate = (date: string | number) => {
@@ -236,10 +285,31 @@ const loadMatches = async () => {
   try {
     isLoading.value = true;
     const response = await ApiService.getMatches();
-    matches.value = response.data;
+    matches.value = Array.isArray(response.data?.data) ? response.data.data : [];
+
+    // 如果用戶已登入，獲取參與狀態
+    if (authStore.user?.id) {
+      try {
+        const allMatchIds = matches.value.map((m: any) => m.id);
+        const participations = await Promise.all(
+          allMatchIds.map((id) => ApiService.getMatchParticipationStatus(id))
+        );
+
+        participations.forEach((response: any, index) => {
+          if (response.data?.has_participated) {
+            userParticipations.value.set(allMatchIds[index], {
+              status: response.data.participation_status,
+            });
+          }
+        });
+      } catch (error) {
+        console.error('無法獲取參與狀態:', error);
+      }
+    }
   } catch (error) {
     console.error('載入配對失敗:', error);
     toast.error('載入配對失敗');
+    matches.value = [];
   } finally {
     isLoading.value = false;
   }
@@ -250,16 +320,22 @@ const loadLocations = async () => {
   try {
     if (authStore.isAdmin) {
       const response = await ApiService.getLocations();
-      locations.value = response.data;
+      locations.value = Array.isArray(response.data?.data) ? response.data.data : [];
     }
   } catch (error) {
     console.error('載入地點失敗:', error);
+    locations.value = [];
   }
 };
 
 // 參與配對
 const joinMatch = async (matchId: number) => {
   try {
+    if (!matchId || isNaN(matchId)) {
+      toast.error('無效的配對 ID');
+      return;
+    }
+
     isJoining.value = true;
     await ApiService.joinMatch(matchId);
     toast.success('成功參與配對！');
