@@ -70,7 +70,11 @@
             <label class="label">地點</label>
             <select v-model="selectedLocation" class="input">
               <option value="">所有地點</option>
-              <option v-for="location in locations" :key="location.id" :value="location.id">
+              <option
+                v-for="location in availableLocations"
+                :key="location.id"
+                :value="location.id"
+              >
                 {{ location.name }}
               </option>
             </select>
@@ -187,7 +191,6 @@ const authStore = useAuthStore();
 const toast = useToast();
 
 const matches = ref<any[]>([]);
-const locations = ref<any[]>([]);
 const isLoading = ref(false);
 const isJoining = ref(false);
 const searchQuery = ref('');
@@ -229,6 +232,23 @@ const filteredMatches = computed(() => {
   }
 
   return filtered;
+});
+
+// 可用地點（從當前配對中提取）
+const availableLocations = computed(() => {
+  const locationMap = new Map<number, { id: number; name: string }>();
+
+  matches.value.forEach((match) => {
+    if (match.activity?.location) {
+      const location = match.activity.location;
+      locationMap.set(location.id, {
+        id: location.id,
+        name: location.name || '未知地點',
+      });
+    }
+  });
+
+  return Array.from(locationMap.values()).sort((a, b) => a.id - b.id);
 });
 
 // 計算用戶對每個配對的參與狀態
@@ -320,19 +340,6 @@ const loadMatches = async () => {
   }
 };
 
-// 載入地點列表
-const loadLocations = async () => {
-  try {
-    if (authStore.isAdmin) {
-      const response = await ApiService.getLocations();
-      locations.value = Array.isArray(response.data?.data) ? response.data.data : [];
-    }
-  } catch (error) {
-    console.error('載入地點失敗:', error);
-    locations.value = [];
-  }
-};
-
 // 參與配對
 const joinMatch = async (matchId: number) => {
   try {
@@ -364,6 +371,5 @@ const clearFilters = () => {
 
 onMounted(() => {
   loadMatches();
-  loadLocations();
 });
 </script>

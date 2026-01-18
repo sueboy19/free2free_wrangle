@@ -296,6 +296,16 @@
                   {{ formatDate(match.match_time) }}
                 </div>
 
+                <div class="flex items-center text-sm text-gray-500 mb-2">
+                  <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {{ match.organizer_id === authStore.user?.id ? '開局者' : '參與者' }}
+                  <span v-if="match.organizer_id !== authStore.user?.id" class="ml-1">
+                    · {{ match.organizer?.name }}
+                  </span>
+                </div>
+
                 <span
                   class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800"
                 >

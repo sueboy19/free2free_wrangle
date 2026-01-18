@@ -67,19 +67,72 @@ router.get('/matches', optionalAuthMiddleware, async (c) => {
 });
 
 router.get('/user/matches', authMiddleware, async (c) => {
-  const user = c.get('user' as never);
+  const user = c.get('user' as never) as any;
+  if (!user?.id) {
+    throw new Error('User not found');
+  }
   const status = c.req.query('status') || 'completed';
 
   const result = await c.env.DB.prepare(
-    `SELECT DISTINCT m.* FROM matches m
-     JOIN match_participants mp ON m.id = mp.match_id
-     WHERE mp.user_id = ? AND m.status = ?
-     ORDER BY m.match_time DESC`
+    `SELECT DISTINCT
+       m.id as id,
+       m.activity_id,
+       m.organizer_id,
+       m.match_time,
+       m.status,
+       a.id as activity_db_id,
+       a.title,
+       a.target_count,
+       a.description,
+       a.created_by,
+       a.location_id,
+       l.id as location_db_id,
+       l.name as location_name,
+       l.address as location_address,
+       l.latitude as location_latitude,
+       l.longitude as location_longitude,
+       u.name as organizer_name
+      FROM matches m
+      JOIN match_participants mp ON m.id = mp.match_id
+      LEFT JOIN activities a ON m.activity_id = a.id
+      LEFT JOIN locations l ON a.location_id = l.id
+      LEFT JOIN users u ON m.organizer_id = u.id
+      WHERE mp.user_id = ? AND m.status = ?
+      ORDER BY m.match_time DESC`
   )
-    .bind((user as any).id, status)
+    .bind(user.id, status)
     .all();
 
-  return c.json({ data: result.results || [] });
+  // Flatten result to include nested activity object
+  const flattenedMatches = (result.results || []).map((match: any) => ({
+    id: match.id,
+    activity_id: match.activity_id,
+    organizer_id: match.organizer_id,
+    match_time: match.match_time,
+    status: match.status,
+    activity: {
+      id: match.activity_db_id,
+      title: match.title,
+      target_count: match.target_count,
+      description: match.description,
+      location: {
+        id: match.location_db_id,
+        name: match.location_name,
+        address: match.location_address,
+        latitude: match.location_latitude,
+        longitude: match.location_longitude,
+      },
+      created_by: match.created_by,
+    },
+    organizer: match.organizer_name
+      ? {
+          id: match.organizer_id,
+          name: match.organizer_name,
+        }
+      : undefined,
+  }));
+
+  return c.json({ data: flattenedMatches });
 });
 
 router.get('/matches/:id', optionalAuthMiddleware, async (c) => {
