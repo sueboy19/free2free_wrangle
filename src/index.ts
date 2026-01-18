@@ -13,8 +13,9 @@ const app = new Hono<{ Bindings: Env }>();
 
 app.use('*', logger());
 app.use('*', async (c, next) => {
+  const corsOrigins = c.env.CORS_ORIGINS || 'http://localhost:3000';
   const corsConfig = cors({
-    origin: c.env.CORS_ORIGINS.split(','),
+    origin: corsOrigins.split(','),
     credentials: true,
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization'],
