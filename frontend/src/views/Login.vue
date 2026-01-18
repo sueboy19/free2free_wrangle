@@ -39,20 +39,34 @@
 
           <button
             v-if="isDevelopment"
-            @click="mockLogin"
+            @click="mockLoginUser1"
             :disabled="isLoading"
-            class="w-full flex justify-center items-center px-4 py-3 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            class="w-full flex justify-between items-center px-4 py-3 border border-blue-300 rounded-md shadow-sm text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"
-              />
-            </svg>
-            <span v-if="isLoading">登入中...</span>
-            <span v-else>Mock 登入 (開發用)</span>
+            <div class="flex items-center">
+              <span
+                class="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs mr-3"
+                >1</span
+              >
+              <span>Mock 登入</span>
+            </div>
+            <div class="text-xs text-blue-600">開局者 (測試用戶 A)</div>
+          </button>
+
+          <button
+            v-if="isDevelopment"
+            @click="mockLoginUser2"
+            :disabled="isLoading"
+            class="w-full flex justify-between items-center px-4 py-3 border border-green-300 rounded-md shadow-sm text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <div class="flex items-center">
+              <span
+                class="w-6 h-6 bg-green-600 text-white rounded-full flex items-center justify-center text-xs mr-3"
+                >2</span
+              >
+              <span>Mock 登入</span>
+            </div>
+            <div class="text-xs text-green-600">參與者 (測試用戶 B)</div>
           </button>
         </div>
 
@@ -135,13 +149,40 @@ const loginWithProvider = async (provider: 'facebook' | 'instagram') => {
   }
 };
 
-// Mock 登入方法
-const mockLogin = async () => {
+// Mock 登入方法 - 用戶 1 (開局者)
+const mockLoginUser1 = async () => {
   try {
     isLoading.value = true;
     errorMessage.value = '';
 
-    await authStore.mockLogin();
+    await authStore.mockLogin({
+      id: 'test_user_1',
+      name: '測試用戶 A (開局者)',
+      email: 'test_user_1@example.com',
+    });
+
+    const redirectPath = (router.currentRoute.value.query.redirect as string) || '/';
+    router.push(redirectPath);
+  } catch (error) {
+    console.error('Mock 登入失敗:', error);
+    errorMessage.value = error instanceof Error ? error.message : '登入失敗，請重試';
+    toast.error('登入失敗，請重試');
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+// Mock 登入方法 - 用戶 2 (參與者)
+const mockLoginUser2 = async () => {
+  try {
+    isLoading.value = true;
+    errorMessage.value = '';
+
+    await authStore.mockLogin({
+      id: 'test_user_2',
+      name: '測試用戶 B (參與者)',
+      email: 'test_user_2@example.com',
+    });
 
     const redirectPath = (router.currentRoute.value.query.redirect as string) || '/';
     router.push(redirectPath);

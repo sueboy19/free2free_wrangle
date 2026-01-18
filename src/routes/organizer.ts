@@ -1,8 +1,28 @@
 import { Hono } from 'hono';
+import type { D1Database } from '@cloudflare/workers-types';
 import { authMiddleware, organizerAuthMiddleware } from '../middleware/auth';
 import type { Env } from '../types';
 
 const router = new Hono<{ Bindings: Env }>();
+
+// Helper function to verify user is the organizer
+async function verifyOrganizer(
+  db: D1Database,
+  matchId: number,
+  userId: number,
+  allowAdmin: boolean = false
+): Promise<void> {
+  const match = await db.prepare('SELECT * FROM matches WHERE id = ?').bind(matchId).first();
+
+  if (!match) {
+    throw new Error('配對不存在');
+  }
+
+  // Check if user is the organizer
+  if ((match as any).organizer_id !== userId) {
+    throw new Error('只有開局者才能執行此操作');
+  }
+}
 
 router.post('/matches', authMiddleware, async (c) => {
   const user = c.get('user' as never);
@@ -28,13 +48,17 @@ router.post('/matches', authMiddleware, async (c) => {
 });
 
 router.put('/matches/:id/status', authMiddleware, async (c) => {
-  const id = c.req.param('id');
+  const user = c.get('user' as never);
+  const id = parseInt(c.req.param('id'));
   const body = await c.req.json();
   const { status } = body;
 
   if (!['open', 'completed', 'cancelled'].includes(status)) {
     throw new Error('Invalid status');
   }
+
+  // Verify user is the organizer
+  await verifyOrganizer(c.env.DB, id, (user as any).id);
 
   await c.env.DB.prepare('UPDATE matches SET status = ? WHERE id = ?').bind(status, id).run();
 
@@ -86,19 +110,8 @@ router.post('/matches/:id/join', authMiddleware, async (c) => {
     throw new Error('您已經參與過此配對');
   }
 
-  // Check capacity (target_count)
-  const currentParticipants = await c.env.DB.prepare(
-    'SELECT COUNT(*) as count FROM match_participants WHERE match_id = ? AND status != ?'
-  )
-    .bind(matchId, 'rejected')
-    .first();
-
-  const maxParticipants = (match as any).target_count || 0;
-  const currentCount = (currentParticipants as any)?.count || 0;
-
-  if (currentCount >= maxParticipants) {
-    throw new Error(`配對已滿員（${maxParticipants}人）`);
-  }
+  // Note: No capacity check at application stage.
+  // target_count is a guideline; organizer decides final participants during review.
 
   // Insert participant (no transaction support in D1, but check again to prevent duplicates)
   const result = await c.env.DB.prepare(
@@ -116,6 +129,7 @@ router.post('/matches/:id/join', authMiddleware, async (c) => {
 });
 
 router.put('/matches/:matchId/participants/:participantId', organizerAuthMiddleware, async (c) => {
+  const user = c.get('user' as never);
   const participantId = c.req.param('participantId');
   const matchIdParam = c.req.param('matchId');
   const matchId = parseInt(matchIdParam);
@@ -126,14 +140,11 @@ router.put('/matches/:matchId/participants/:participantId', organizerAuthMiddlew
     throw new Error('Invalid status');
   }
 
-  // Verify match exists and is still open (JOIN with activities to get target_count)
-  const match = await c.env.DB.prepare(
-    `SELECT m.*, a.target_count FROM matches m
-     JOIN activities a ON m.activity_id = a.id
-     WHERE m.id = ?`
-  )
-    .bind(matchId)
-    .first();
+  // Verify user is the organizer
+  await verifyOrganizer(c.env.DB, matchId, (user as any).id);
+
+  // Verify match exists and is still open
+  const match = await c.env.DB.prepare('SELECT * FROM matches WHERE id = ?').bind(matchId).first();
 
   if (!match) {
     throw new Error('配對不存在');
@@ -154,21 +165,8 @@ router.put('/matches/:matchId/participants/:participantId', organizerAuthMiddlew
     throw new Error('參與者不存在');
   }
 
-  // Check capacity before approving
-  if (status === 'approved') {
-    const currentApproved = await c.env.DB.prepare(
-      'SELECT COUNT(*) as count FROM match_participants WHERE match_id = ? AND status = ?'
-    )
-      .bind(matchId, 'approved')
-      .first();
-
-    const maxParticipants = (match as any).target_count || 0;
-    const currentApprovedCount = (currentApproved as any)?.count || 0;
-
-    if (currentApprovedCount >= maxParticipants) {
-      throw new Error(`配對已滿員，無法批准更多參與者（最大${maxParticipants}人）`);
-    }
-  }
+  // Note: No capacity check during review stage.
+  // Organizer has full control over who gets approved, regardless of target_count.
 
   await c.env.DB.prepare('UPDATE match_participants SET status = ? WHERE id = ?')
     .bind(status, participantId)
@@ -179,6 +177,21 @@ router.put('/matches/:matchId/participants/:participantId', organizerAuthMiddlew
     .first();
 
   return c.json({ data: updatedParticipant });
+});
+
+router.delete('/matches/:id', authMiddleware, async (c) => {
+  const user = c.get('user' as never);
+  const id = parseInt(c.req.param('id'));
+
+  // Verify user is the organizer
+  await verifyOrganizer(c.env.DB, id, (user as any).id);
+
+  // Delete match and cascade delete participants/reviews
+  await c.env.DB.prepare('DELETE FROM reviews WHERE match_id = ?').bind(id).run();
+  await c.env.DB.prepare('DELETE FROM match_participants WHERE match_id = ?').bind(id).run();
+  const result = await c.env.DB.prepare('DELETE FROM matches WHERE id = ?').bind(id).run();
+
+  return c.json({ success: (result.meta.changes || 0) > 0 });
 });
 
 router.delete('/matches/:id/join', authMiddleware, async (c) => {
