@@ -218,7 +218,7 @@ const filteredMatches = computed(() => {
   // 地點篩選
   if (selectedLocation.value) {
     filtered = filtered.filter(
-      (match) => match.activity?.location_id === parseInt(selectedLocation.value)
+      (match) => match.activity?.location?.id === parseInt(selectedLocation.value)
     );
   }
 
