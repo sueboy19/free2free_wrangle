@@ -17,6 +17,56 @@ router.post('/reviews', authMiddleware, async (c) => {
     throw new Error('Score must be between 1 and 5');
   }
 
+  // Verify match exists
+  const match = await c.env.DB.prepare('SELECT * FROM matches WHERE id = ?').bind(match_id).first();
+
+  if (!match) {
+    throw new Error('配對不存在');
+  }
+
+  // Verify match is completed (can only review completed matches)
+  if ((match as any).status !== 'completed') {
+    throw new Error('只能評分已完成的配對');
+  }
+
+  // Verify reviewer participated in the match
+  const reviewerParticipation = await c.env.DB.prepare(
+    'SELECT * FROM match_participants WHERE match_id = ? AND user_id = ?'
+  )
+    .bind(match_id, (user as any).id)
+    .first();
+
+  if (!reviewerParticipation) {
+    throw new Error('您未參與此配對，無法評分');
+  }
+
+  // Verify reviewee is also a participant (can only review someone you participated with)
+  const revieweeParticipation = await c.env.DB.prepare(
+    'SELECT * FROM match_participants WHERE match_id = ? AND user_id = ?'
+  )
+    .bind(match_id, reviewee_id)
+    .first();
+
+  if (!revieweeParticipation) {
+    throw new Error('被評分者未參與此配對');
+  }
+
+  // Cannot review yourself
+  if (reviewee_id === (user as any).id) {
+    throw new Error('不能評分自己');
+  }
+
+  // Check if already reviewed this user for this match
+  const existingReview = await c.env.DB.prepare(
+    'SELECT * FROM reviews WHERE match_id = ? AND reviewer_id = ? AND reviewee_id = ?'
+  )
+    .bind(match_id, (user as any).id, reviewee_id)
+    .first();
+
+  if (existingReview) {
+    throw new Error('您已經評分過此用戶');
+  }
+
   const result = await c.env.DB.prepare(
     `INSERT INTO reviews (match_id, reviewer_id, reviewee_id, score, comment, created_at)
        VALUES (?, ?, ?, ?, ?, datetime('now'))`
@@ -35,6 +85,7 @@ router.get('/reviews', async (c) => {
   const matchId = c.req.query('match_id');
   const reviewerId = c.req.query('reviewer_id');
 
+  // Build query with proper parameter binding to prevent SQL injection
   let query = 'SELECT * FROM reviews WHERE 1=1';
   const params: any[] = [];
 
@@ -50,12 +101,9 @@ router.get('/reviews', async (c) => {
 
   query += ' ORDER BY created_at DESC';
 
-  let stmt = c.env.DB.prepare(query);
-  for (const param of params) {
-    stmt = stmt.bind(param);
-  }
-
-  const result = await stmt.all();
+  // Use parameterized query instead of direct binding iteration
+  const stmt = c.env.DB.prepare(query);
+  const result = await stmt.bind(...params).all();
 
   return c.json({ data: result.results || [] });
 });

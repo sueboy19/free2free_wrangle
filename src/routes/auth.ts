@@ -249,7 +249,7 @@ router.post('/auth/logout', async (c) => {
     }
 
     return c.json({ message: 'Logged out successfully' });
-  } catch (error) {
+  } catch {
     return c.json({ message: 'Logged out successfully' });
   }
 });

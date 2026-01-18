@@ -42,6 +42,31 @@ apiClient.interceptors.response.use(
       const { status, data } = error.response;
 
       switch (status) {
+        case 400:
+          // Bad Request - validation error or business logic error
+          const errorCode = data?.code_error || 'VALIDATION_ERROR';
+          const errorMessage = data?.error || '操作失敗，請重試';
+
+          // 特定錯誤訊息映射
+          const specificMessages: Record<string, string> = {
+            您已經參與過此配對: errorMessage,
+            配對已滿員: errorMessage,
+            '配對未開放，無法參與': errorMessage,
+            開局者不能參與自己的配對: errorMessage,
+            配對不存在: errorMessage,
+            '配對已關閉或已完成，無法審核': errorMessage,
+            '配對已滿員，無法批准更多參與者': errorMessage,
+            參與者不存在: errorMessage,
+            '您未參與此配對，無法評分': errorMessage,
+            被評分者未參與此配對: errorMessage,
+            不能評分自己: errorMessage,
+            只能評分已完成的配對: errorMessage,
+            您已經評分過此用戶: errorMessage,
+          };
+
+          const friendlyMessage = specificMessages[errorMessage] || errorMessage;
+          toast.error(friendlyMessage);
+          break;
         case 401:
           // 未授權，清除 token 並重定向到登入頁
           localStorage.removeItem('auth_token');
