@@ -68,7 +68,7 @@
             <select v-else v-model="formData.activity_id" class="input" required>
               <option value="">請選擇活動</option>
               <option v-for="activity in activities" :key="activity.id" :value="activity.id">
-                {{ activity.title }} - {{ activity.location?.name || '未知地點' }}
+                {{ activity.title }} - {{ activity.location_name || '未知地點' }}
               </option>
             </select>
             <p class="text-sm text-gray-500 mt-1">如果沒有適合的活動，請先聯繫管理員創建。</p>

@@ -181,14 +181,10 @@ import { zhTW } from 'date-fns/locale';
 const authStore = useAuthStore();
 const isLoading = ref(false);
 const featuredMatches = ref<any[]>([]);
+const todayMatches = ref<any[]>([]);
 
 // 今日配對數量
-const todayMatchesCount = computed(() => {
-  const today = new Date().toDateString();
-  return featuredMatches.value.filter(
-    (match) => new Date(match.match_time).toDateString() === today
-  ).length;
-});
+const todayMatchesCount = computed(() => todayMatches.value.length);
 
 // 格式化日期
 const formatDate = (date: string | number) => {
@@ -196,6 +192,21 @@ const formatDate = (date: string | number) => {
   const d = new Date(date);
   if (isNaN(d.getTime())) return '未設定';
   return format(d, 'MM月dd日 HH:mm', { locale: zhTW });
+};
+
+// 載入今日配對（統計用）
+const loadTodayMatches = async () => {
+  try {
+    const response = await ApiService.getMatches();
+    if (Array.isArray(response.data?.data)) {
+      const today = new Date().toDateString();
+      todayMatches.value = response.data.data.filter(
+        (match: any) => new Date(match.match_time).toDateString() === today
+      );
+    }
+  } catch (error) {
+    console.error('載入今日配對失敗:', error);
+  }
 };
 
 // 載入精選配對
@@ -217,6 +228,7 @@ const loadFeaturedMatches = async () => {
 onMounted(() => {
   if (authStore.isAuthenticated) {
     loadFeaturedMatches();
+    loadTodayMatches();
   }
 });
 </script>

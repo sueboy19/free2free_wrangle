@@ -6,12 +6,64 @@ const router = new Hono<{ Bindings: Env }>();
 
 router.get('/matches', optionalAuthMiddleware, async (c) => {
   const result = await c.env.DB.prepare(
-    `SELECT * FROM matches WHERE status = ? AND match_time > datetime('now') ORDER BY match_time ASC`
+    `SELECT
+       m.id as id,
+       m.activity_id,
+       m.organizer_id,
+       m.match_time,
+       m.status,
+       a.id as activity_db_id,
+       a.title,
+       a.target_count,
+       a.description,
+       a.created_by,
+       a.location_id,
+       l.id as location_db_id,
+       l.name as location_name,
+       l.address as location_address,
+       l.latitude as location_latitude,
+       l.longitude as location_longitude,
+       u.name as organizer_name
+     FROM matches m
+     LEFT JOIN activities a ON m.activity_id = a.id
+     LEFT JOIN locations l ON a.location_id = l.id
+     LEFT JOIN users u ON m.organizer_id = u.id
+     WHERE m.status = ? AND m.match_time > datetime('now')
+     ORDER BY m.match_time ASC`
   )
     .bind('open')
     .all();
 
-  return c.json({ data: result.results || [] });
+  // Flatten result to include activity object
+  const flattenedMatches = (result.results || []).map((match: any) => ({
+    id: match.id,
+    activity_id: match.activity_id,
+    organizer_id: match.organizer_id,
+    match_time: match.match_time,
+    status: match.status,
+    activity: {
+      id: match.activity_db_id,
+      title: match.title,
+      target_count: match.target_count,
+      description: match.description,
+      location: {
+        id: match.location_db_id,
+        name: match.location_name,
+        address: match.location_address,
+        latitude: match.location_latitude,
+        longitude: match.location_longitude,
+      },
+      created_by: match.created_by,
+    },
+    organizer: match.organizer_name
+      ? {
+          id: match.organizer_id,
+          name: match.organizer_name,
+        }
+      : undefined,
+  }));
+
+  return c.json({ data: flattenedMatches });
 });
 
 router.get('/user/matches', authMiddleware, async (c) => {
@@ -32,80 +84,67 @@ router.get('/user/matches', authMiddleware, async (c) => {
 
 router.get('/matches/:id', optionalAuthMiddleware, async (c) => {
   const id = c.req.param('id');
-
-  const currentUser = (c as any).get('user');
-
-  const row = await c.env.DB.prepare(
-    `
-    SELECT
-      m.*,
-      a.title as activity_title,
-      a.description as activity_description,
-      a.target_count as activity_target_count,
-      l.id as location_id,
-      l.name as location_name,
-      l.address as location_address,
-      l.latitude as location_latitude,
-      l.longitude as location_longitude,
-      u.name as organizer_name
-    FROM matches m
-    JOIN activities a ON m.activity_id = a.id
-    LEFT JOIN locations l ON a.location_id = l.id
-    JOIN users u ON m.organizer_id = u.id
-    WHERE m.id = ?
-    `
+  const result = await c.env.DB.prepare(
+    `SELECT
+       m.id as id,
+       m.activity_id,
+       m.organizer_id,
+       m.match_time,
+       m.status,
+       a.id as activity_db_id,
+       a.title,
+       a.target_count,
+       a.description,
+       a.created_by,
+       a.location_id,
+       l.id as location_db_id,
+       l.name as location_name,
+       l.address as location_address,
+       l.latitude as location_latitude,
+       l.longitude as location_longitude,
+       u.name as organizer_name
+     FROM matches m
+     LEFT JOIN activities a ON m.activity_id = a.id
+     LEFT JOIN locations l ON a.location_id = l.id
+     LEFT JOIN users u ON m.organizer_id = u.id
+     WHERE m.id = ?`
   )
     .bind(id)
     .first();
 
-  if (!row) {
+  if (!result) {
     throw new Error('Match not found');
   }
 
-  let userParticipation = null;
-  if (currentUser) {
-    const participation = await c.env.DB.prepare(
-      'SELECT * FROM match_participants WHERE match_id = ? AND user_id = ?'
-    )
-      .bind(id, currentUser.id)
-      .first();
-    userParticipation = participation;
-  }
-
-  const match = {
-    id: row.id,
-    activity_id: row.activity_id,
-    organizer_id: row.organizer_id,
-    match_time: row.match_time,
-    status: row.status,
+  // Flatten result to include nested activity object
+  const flattenedMatch = {
+    id: result.id,
+    activity_id: result.activity_id,
+    organizer_id: result.organizer_id,
+    match_time: result.match_time,
+    status: result.status,
+    target_count: result.target_count,
+    location_id: result.location_db_id,
+    location_name: result.location_name,
+    location_address: result.location_address,
+    location_latitude: result.location_latitude,
+    location_longitude: result.location_longitude,
+    created_by: result.created_by,
+    organizer_name: result.organizer_name,
     activity: {
-      id: row.activity_id,
-      title: row.activity_title,
-      description: row.activity_description,
-      target_count: row.activity_target_count,
-      location: row.location_id
-        ? {
-            id: row.location_id,
-            name: row.location_name,
-            address: row.location_address,
-            latitude: row.location_latitude,
-            longitude: row.location_longitude,
-          }
-        : null,
+      id: result.activity_db_id,
+      title: result.title,
+      description: result.description,
+      target_count: result.target_count,
+      location: {
+        id: result.location_db_id,
+        name: result.location_name,
+        address: result.location_address,
+      },
     },
-    organizer: {
-      id: row.organizer_id,
-      name: row.organizer_name,
-    },
-    user_participation: userParticipation
-      ? {
-          id: userParticipation.id,
-          status: userParticipation.status,
-        }
-      : null,
   };
 
-  return c.json({ data: match });
+  return c.json({ data: flattenedMatch });
 });
 
 router.get('/matches/:id/participants', async (c) => {

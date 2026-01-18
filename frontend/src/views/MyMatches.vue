@@ -362,7 +362,7 @@ const loadMatches = async () => {
 
     // 載入歷史配對
     const pastResponse = await ApiService.getPastMatches();
-    pastMatches.value = pastResponse.data;
+    pastMatches.value = Array.isArray(pastResponse.data?.data) ? pastResponse.data.data : [];
   } catch (error) {
     console.error('載入配對失敗:', error);
   } finally {

@@ -224,7 +224,7 @@ const loadRecentActivities = async () => {
 
     // 載入最近的配對活動
     const response = await ApiService.getMatches();
-    const matches = response.data;
+    const matches = Array.isArray(response.data?.data) ? response.data.data : [];
 
     // 轉換為活動記錄格式
     recentActivities.value = matches

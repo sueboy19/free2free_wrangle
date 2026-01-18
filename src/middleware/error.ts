@@ -26,6 +26,16 @@ export const errorHandler = async (c: Context, next: Next) => {
         },
         error.statusCode as any
       );
+    } else if (error instanceof Error) {
+      // Regular errors (validation, business logic) should return 400
+      return c.json(
+        {
+          code: 400,
+          error: error.message,
+          code_error: 'VALIDATION_ERROR',
+        },
+        400 as any
+      );
     }
 
     return c.json(

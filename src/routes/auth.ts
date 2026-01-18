@@ -7,6 +7,17 @@ import { authMiddleware } from '../middleware/auth';
 
 const router = new Hono<{ Bindings: Env }>();
 
+// This must come BEFORE /auth/:provider to avoid route conflicts
+router.get('/auth/me', authMiddleware, async (c) => {
+  const user = c.get('user' as never);
+
+  if (!user) {
+    throw new Error('Authentication required');
+  }
+
+  return c.json({ user });
+});
+
 router.get('/auth/:provider', async (c) => {
   const provider = c.req.param('provider');
 
@@ -238,9 +249,19 @@ router.post('/auth/logout', async (c) => {
     }
 
     return c.json({ message: 'Logged out successfully' });
-  } catch {
+  } catch (error) {
     return c.json({ message: 'Logged out successfully' });
   }
+});
+
+router.get('/profile', authMiddleware, async (c) => {
+  const user = c.get('user' as never);
+
+  if (!user) {
+    throw new Error('Authentication required');
+  }
+
+  return c.json(user);
 });
 
 router.get('/auth/me', authMiddleware, async (c) => {

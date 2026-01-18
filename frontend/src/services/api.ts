@@ -152,7 +152,7 @@ export class ApiService {
   }
 
   static async getPastMatches() {
-    return apiClient.get('/user/past-matches');
+    return apiClient.get('/user/matches?status=completed');
   }
 
   static async getMatchDetails(id: number) {
@@ -178,15 +178,15 @@ export class ApiService {
 
   // 評分功能
   static async createReview(matchId: number, reviewData: any) {
-    return apiClient.post(`/review/matches/${matchId}`, reviewData);
+    return apiClient.post('/reviews', { ...reviewData, match_id: matchId });
   }
 
   static async likeReview(reviewId: number) {
-    return apiClient.post(`/review-like/reviews/${reviewId}/like`);
+    return apiClient.post(`/reviews/${reviewId}/like`, { is_like: true });
   }
 
   static async dislikeReview(reviewId: number) {
-    return apiClient.post(`/review-like/reviews/${reviewId}/dislike`);
+    return apiClient.post(`/reviews/${reviewId}/like`, { is_like: false });
   }
 }
 

@@ -183,7 +183,7 @@
                     <div class="text-sm text-gray-500">{{ activity.description }}</div>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {{ activity.location?.name }}
+                    {{ activity.location_name || '未知地點' }}
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {{ activity.target_count }}

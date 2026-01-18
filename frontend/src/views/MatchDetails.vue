@@ -61,7 +61,9 @@
         <!-- 配對基本資訊 -->
         <div class="card">
           <div class="flex justify-between items-start mb-4">
-            <h1 class="text-2xl font-bold text-gray-900">{{ match.activity?.title }}</h1>
+            <h1 class="text-2xl font-bold text-gray-900">
+              {{ match.activity_title || match.activity?.title || '未知活動' }}
+            </h1>
             <span
               :class="[
                 'inline-flex px-3 py-1 text-sm font-semibold rounded-full',
@@ -253,13 +255,24 @@
         <!-- 操作按鈕 -->
         <div class="flex space-x-4">
           <button
-            v-if="!isOrganizer && match.status === 'open'"
+            v-if="!isOrganizer && match.status === 'open' && !hasParticipated"
             @click="joinMatch"
             :disabled="isJoining"
             class="flex-1 btn-primary"
           >
             {{ isJoining ? '加入中...' : '參與配對' }}
           </button>
+
+          <span
+            v-if="!isOrganizer && match.status === 'open' && hasParticipated"
+            class="flex-1 btn-secondary text-center"
+          >
+            {{
+              participants.find((p: any) => p.user_id === authStore.user?.id)?.status === 'pending'
+                ? '待審核'
+                : '已申請'
+            }}
+          </span>
 
           <router-link to="/matches" class="flex-1 btn-secondary text-center">
             返回配對列表
@@ -291,6 +304,7 @@ const isJoining = ref(false);
 const isSubmitting = ref(false);
 const isProcessing = ref(false);
 const hasReviewed = ref(false);
+const hasOrganizerAccess = ref(false);
 
 const reviewForm = ref({
   score: 0,
@@ -301,6 +315,12 @@ const reviewForm = ref({
 // 計算是否為開局者
 const isOrganizer = computed(() => {
   return match.value?.organizer_id === authStore.user?.id;
+});
+
+// 檢查當前用戶是否已經參與
+const hasParticipated = computed(() => {
+  if (!authStore.user?.id || !participants.value) return false;
+  return participants.value.some((p: any) => p.user_id === authStore.user?.id);
 });
 
 // 格式化日期
@@ -329,10 +349,9 @@ const loadMatchDetails = async () => {
       return;
     }
 
-    const response = await ApiService.getMatches();
-    const allMatches = Array.isArray(response.data?.data) ? response.data.data : [];
-
-    match.value = allMatches.find((m: any) => m.id === matchId);
+    // 使用 getMatchDetails API
+    const response = await ApiService.getMatchDetails(matchId);
+    match.value = response.data?.data;
 
     if (!match.value) {
       toast.error('配對不存在');
@@ -346,7 +365,7 @@ const loadMatchDetails = async () => {
     participants.value = Array.isArray(responseData?.data) ? responseData.data : [];
 
     // 檢查是否有權限看到所有參與者
-    const hasOrganizerAccess = responseData?.is_organizer || false;
+    hasOrganizerAccess.value = responseData?.is_organizer || false;
   } catch (error) {
     console.error('載入配對詳情失敗:', error);
     toast.error('載入配對詳情失敗');
@@ -369,8 +388,15 @@ const joinMatch = async () => {
     await ApiService.joinMatch(matchId);
     toast.success('成功參與配對！');
     await loadMatchDetails(); // 重新載入
-  } catch (error) {
+  } catch (error: any) {
     console.error('參與配對失敗:', error);
+
+    // 如果錯誤訊息包含「已經參與」，不顯示錯誤，直接重新載入
+    if (error.response?.data?.error?.includes('已經參與') || error.message?.includes('已經參與')) {
+      await loadMatchDetails(); // 重新載入以更新 UI
+      return;
+    }
+
     toast.error('參與配對失敗');
   } finally {
     isJoining.value = false;

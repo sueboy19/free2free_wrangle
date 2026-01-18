@@ -45,12 +45,19 @@ router.put('/matches/:id/status', authMiddleware, async (c) => {
 
 router.post('/matches/:id/join', authMiddleware, async (c) => {
   const user = c.get('user' as never);
-  const matchId = c.req.param('id');
+  const matchIdParam = c.req.param('id');
+  const matchId = parseInt(matchIdParam);
+
+  if (!matchId || isNaN(matchId)) {
+    throw new Error('無效的配對 ID');
+  }
+
+  const userId = (user as any).id;
 
   const existingParticipant = await c.env.DB.prepare(
     'SELECT * FROM match_participants WHERE match_id = ? AND user_id = ?'
   )
-    .bind(matchId, (user as any).id)
+    .bind(matchId, userId)
     .first();
 
   if (existingParticipant) {
@@ -63,7 +70,7 @@ router.post('/matches/:id/join', authMiddleware, async (c) => {
     throw new Error('配對不存在');
   }
 
-  if (match.organizer_id === (user as any).id) {
+  if ((match as any).organizer_id === userId) {
     throw new Error('開局者不能參與自己的配對');
   }
 
@@ -71,7 +78,7 @@ router.post('/matches/:id/join', authMiddleware, async (c) => {
     `INSERT INTO match_participants (match_id, user_id, status, joined_at)
        VALUES (?, ?, 'pending', datetime('now'))`
   )
-    .bind(matchId, (user as any).id)
+    .bind(matchId, userId)
     .run();
 
   const participant = await c.env.DB.prepare('SELECT * FROM match_participants WHERE id = ?')

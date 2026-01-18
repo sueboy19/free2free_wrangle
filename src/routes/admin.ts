@@ -4,6 +4,52 @@ import type { Env } from '../types';
 
 const router = new Hono<{ Bindings: Env }>();
 
+// Public endpoint to get all activities (no auth required)
+router.get('/activities', async (c) => {
+  const result = await c.env.DB.prepare(
+    `SELECT a.*, l.name as location_name, l.address as location_address, l.latitude as location_latitude, l.longitude as location_longitude
+     FROM activities a
+     LEFT JOIN locations l ON a.location_id = l.id
+     ORDER BY a.id DESC`
+  ).all();
+  return c.json({ data: result.results || [] });
+});
+
+router.get('/activities/:id', async (c) => {
+  const id = c.req.param('id');
+  const activity = await c.env.DB.prepare(
+    `SELECT a.*, l.name as location_name, l.address as location_address, l.latitude as location_latitude, l.longitude as location_longitude
+     FROM activities a
+     LEFT JOIN locations l ON a.location_id = l.id
+     WHERE a.id = ?`
+  )
+    .bind(id)
+    .first();
+
+  if (!activity) {
+    throw new Error('Activity not found');
+  }
+
+  return c.json({ data: activity });
+});
+
+// Public endpoint to get all locations (no auth required)
+router.get('/locations', async (c) => {
+  const result = await c.env.DB.prepare('SELECT * FROM locations ORDER BY id DESC').all();
+  return c.json({ data: result.results || [] });
+});
+
+router.get('/locations/:id', async (c) => {
+  const id = c.req.param('id');
+  const location = await c.env.DB.prepare('SELECT * FROM locations WHERE id = ?').bind(id).first();
+
+  if (!location) {
+    throw new Error('Location not found');
+  }
+
+  return c.json({ data: location });
+});
+
 router.post('/admin/locations', adminAuthMiddleware, async (c) => {
   const body = await c.req.json();
   const { name, address, latitude, longitude } = body;

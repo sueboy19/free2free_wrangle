@@ -110,7 +110,7 @@
           <!-- 活動資訊 -->
           <div class="mb-4">
             <h3 class="text-lg font-semibold text-gray-900 mb-2">
-              {{ match.activity?.title }}
+              {{ match.activity_title || match.activity?.title || '未知活動' }}
             </h3>
             <p class="text-gray-600 text-sm mb-3">
               {{ match.activity?.description }}
@@ -125,7 +125,7 @@
                   clip-rule="evenodd"
                 />
               </svg>
-              {{ match.activity?.location?.name }}
+              {{ match.location_name || match.activity?.location?.name || '未知地點' }}
             </div>
 
             <!-- 時間資訊 -->
@@ -145,7 +145,7 @@
               <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              開局者: {{ match.organizer?.name }}
+              開局者: {{ match.organizer_name || match.organizer?.name || '未知' }}
             </div>
           </div>
 
@@ -199,14 +199,8 @@ const userParticipations = ref<Map<number, { status: string }>>(new Map());
 const filteredMatches = computed(() => {
   let filtered = matches.value;
 
-// 過濾開局者的配對（已經參與過的）
-const filteredMatches = computed(() => {
-  let filtered = matches.value;
-
   // 過濾開局者自己的配對
-  filtered = filtered.filter(
-    (match) => match.organizer_id !== authStore.user?.id
-  );
+  filtered = filtered.filter((match) => match.organizer_id !== authStore.user?.id);
 
   // 搜尋篩選
   if (searchQuery.value) {
@@ -236,41 +230,52 @@ const filteredMatches = computed(() => {
 
   return filtered;
 });
-  }
-
-  return filtered;
-});
 
 // 計算用戶對每個配對的參與狀態
 const getParticipationStatus = (matchId: number) => {
   return userParticipations.value.get(matchId) || null;
 };
 
-const hasParticipated = computed(() => (matchId: number) => {
+const hasParticipated = (matchId: number) => {
   const status = getParticipationStatus(matchId);
-  return status && (status === 'approved' || status === 'rejected');
-});
+  return !!status; // Any participation status (pending, approved, rejected) means user has participated
+};
 
-const isApproved = computed(() => (matchId: number) => {
+const isApproved = (matchId: number) => {
   const status = getParticipationStatus(matchId);
-  return status === 'approved';
-});
+  return status && status.status === 'approved';
+};
 
-const isRejected = computed(() => (matchId: number) => {
+const isRejected = (matchId: number) => {
   const status = getParticipationStatus(matchId);
-  return status === 'rejected';
-});
+  return status && status.status === 'rejected';
+};
 
-const isPending = computed(() => (matchId: number) => {
+const isPending = (matchId: number) => {
   const status = getParticipationStatus(matchId);
-  return status === 'pending';
-});
+  return status && status.status === 'pending';
+};
 
 // 判斷是否為開局者
-const isMatchOrganizer = computed(() => (matchId: number) => {
+const isMatchOrganizer = (matchId: number) => {
   const match = matches.value.find((m) => m.id === matchId);
   return match?.organizer_id === authStore.user?.id;
-});
+};
+
+// 獲取參與狀態標籤
+const getParticipationLabel = (matchId: number) => {
+  const status = getParticipationStatus(matchId);
+  switch (status?.status) {
+    case 'pending':
+      return '待審核';
+    case 'approved':
+      return '已通過';
+    case 'rejected':
+      return '已拒絕';
+    default:
+      return '';
+  }
+};
 
 // 格式化日期
 const formatDate = (date: string | number) => {

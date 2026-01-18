@@ -74,7 +74,7 @@ export const optionalAuthMiddleware = async (c: Context<{ Bindings: Env }>, next
       const payload = await jwtManager.verifyAccessToken(token);
 
       const user = await c.env.DB.prepare('SELECT * FROM users WHERE id = ?')
-        .bind(payload.user_id)
+        .bind(Number(payload.user_id))
         .first();
 
       if (user) {
