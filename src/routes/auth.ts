@@ -350,13 +350,6 @@ router.post('/auth/mock', async (c) => {
     const sessionManager = new SessionManager(c.env.DB);
     await sessionManager.createSession(user.id as number, { ...userData });
 
-    console.log('=== /auth/mock returning ===');
-    console.log('userData.id:', userData.id);
-    console.log('returning:', {
-      user: userData,
-      tokens: { access: tokens.access, refresh: tokens.refresh },
-    });
-
     return c.json({
       user: userData,
       tokens: {
@@ -365,8 +358,6 @@ router.post('/auth/mock', async (c) => {
       },
     });
   } catch (error) {
-    console.error('=== /auth/mock error ===');
-    console.error(error);
     return c.json({ message: error instanceof Error ? error.message : 'Unknown error' }, 500);
   }
 });

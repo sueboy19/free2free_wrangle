@@ -17,8 +17,9 @@ import {
 
 let organizerToken: string;
 let participant1Token: string;
+let participant1UserId: number;
 let participant2Token: string;
-let matchId: number;
+let participant2UserId: number;
 
 describe('E2E 測試 3：審核驗證測試', () => {
   beforeAll(async () => {
@@ -26,56 +27,86 @@ describe('E2E 測試 3：審核驗證測試', () => {
     const organizerLogin = await mockLogin(TEST_USERS.organizer);
     organizerToken = organizerLogin.accessToken;
 
-    // 2. Mock 登入參與者
+    // 2. Mock 登入參與者 1
     const participant1Login = await mockLogin(TEST_USERS.participant1);
     participant1Token = participant1Login.accessToken;
+    participant1UserId = participant1Login.user.id;
 
-    // 3. 創建配對
+    // 3. Mock 登入參與者 2
+    const participant2Login = await mockLogin(TEST_USERS.participant2);
+    participant2Token = participant2Login.accessToken;
+    participant2UserId = participant2Login.user.id;
+  });
+
+  it('開局者可以批准參與者', async () => {
+    // 創建自己的配對
     const match = await createMatch(organizerToken, {
       activity_id: 1,
       match_time: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
     });
+    const matchId = match.id;
 
-    matchId = match.id;
+    // 參與者加入
+    const joinResult = await joinMatch(participant1Token, matchId);
+    expect(joinResult.ok).toBe(true);
+    expect(joinResult.data).toBeDefined();
+    const participantDbId = joinResult.data.id; // 這是 match_participants 表的 id
 
-    // 4. 參與者 1 申請加入
-    await joinMatch(participant1Token, matchId);
-  });
-
-  afterAll(async () => {
-    // 清理測試數據
-    if (matchId) {
-      await setupTestData.cleanMatchData(matchId);
-    }
-  });
-
-  it('開局者可以批准參與者', async () => {
+    // 批准 (使用 participant 的 database id，不是 user id)
     const reviewResult = await reviewParticipant(
       organizerToken,
       matchId,
-      (await mockLogin(TEST_USERS.participant1)).user.id,
+      participantDbId,
       'approved'
     );
 
     expect(reviewResult.ok).toBe(true);
     expect(reviewResult.data).toBeDefined();
     expect(reviewResult.data.status).toBe('approved');
+
+    await setupTestData.cleanMatchData(matchId);
   });
 
   it('開局者可以拒絕參與者', async () => {
+    // 創建自己的配對
+    const match = await createMatch(organizerToken, {
+      activity_id: 1,
+      match_time: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+    });
+    const matchId = match.id;
+
+    // 參與者加入
+    const joinResult = await joinMatch(participant2Token, matchId);
+    expect(joinResult.ok).toBe(true);
+    expect(joinResult.data).toBeDefined();
+    const participantDbId = joinResult.data.id;
+
+    // 拒絕
     const reviewResult = await reviewParticipant(
       organizerToken,
       matchId,
-      (await mockLogin(TEST_USERS.participant1)).user.id,
+      participantDbId,
       'rejected'
     );
 
     expect(reviewResult.ok).toBe(true);
     expect(reviewResult.data).toBeDefined();
     expect(reviewResult.data.status).toBe('rejected');
+
+    await setupTestData.cleanMatchData(matchId);
   });
 
   it('不能審核已完成的配對', async () => {
+    // 創建自己的配對
+    const match = await createMatch(organizerToken, {
+      activity_id: 1,
+      match_time: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+    });
+    const matchId = match.id;
+
+    // 參與者加入
+    await joinMatch(participant1Token, matchId);
+
     // 先完成配對
     await closeMatch(organizerToken, matchId, 'completed');
 
@@ -83,15 +114,27 @@ describe('E2E 測試 3：審核驗證測試', () => {
     const reviewResult = await reviewParticipant(
       organizerToken,
       matchId,
-      (await mockLogin(TEST_USERS.participant1)).user.id,
+      participant1UserId,
       'approved'
     );
 
     expect(reviewResult.ok).toBe(false);
-    expect(reviewResult.error).toContain('只能審核待處理中的配對');
+    expect(reviewResult.error).toContain('配對已關閉或已完成，無法審核');
+
+    await setupTestData.cleanMatchData(matchId);
   });
 
   it('不能審核已取消的配對', async () => {
+    // 創建自己的配對
+    const match = await createMatch(organizerToken, {
+      activity_id: 1,
+      match_time: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+    });
+    const matchId = match.id;
+
+    // 參與者加入
+    await joinMatch(participant1Token, matchId);
+
     // 先取消配對
     await closeMatch(organizerToken, matchId, 'cancelled');
 
@@ -99,44 +142,83 @@ describe('E2E 測試 3：審核驗證測試', () => {
     const reviewResult = await reviewParticipant(
       organizerToken,
       matchId,
-      (await mockLogin(TEST_USERS.participant1)).user.id,
+      participant1UserId,
       'approved'
     );
 
     expect(reviewResult.ok).toBe(false);
-    expect(reviewResult.error).toContain('只能審核待處理中的配對');
+    expect(reviewResult.error).toContain('配對已關閉或已完成，無法審核');
+
+    await setupTestData.cleanMatchData(matchId);
   });
 
   it('參與者不能審核其他參與者', async () => {
-    // 參與者 1 審核參與者 2
+    // 創建自己的配對
+    const match = await createMatch(organizerToken, {
+      activity_id: 1,
+      match_time: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+    });
+    const matchId = match.id;
+
+    // 參與者 1 加入
+    await joinMatch(participant1Token, matchId);
+
+    // 參與者 1 嘗試審核參與者 2
     const result = await reviewParticipant(
       participant1Token,
       matchId,
-      (await mockLogin(TEST_USERS.participant2)).user.id,
+      participant2UserId,
       'approved'
     );
 
     expect(result.ok).toBe(false);
-    expect(result.error).toContain('只有開局者可以審核參與者');
+    expect(result.error).toContain('只有開局者才能執行此操作');
+
+    await setupTestData.cleanMatchData(matchId);
   });
 
   it('不能審核不存在的參與者', async () => {
+    // 創建自己的配對
+    const match = await createMatch(organizerToken, {
+      activity_id: 1,
+      match_time: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+    });
+    const matchId = match.id;
+
+    // 參與者加入
+    await joinMatch(participant1Token, matchId);
+
     // 嘗試審核不存在的 participantId
     const result = await reviewParticipant(organizerToken, matchId, 99999, 'approved');
 
     expect(result.ok).toBe(false);
-    expect(result.error).toContain('找不到該參與者');
+    expect(result.error).toContain('參與者不存在');
+
+    await setupTestData.cleanMatchData(matchId);
   });
 
   it('不能使用無效的審核狀態', async () => {
+    // 創建自己的配對
+    const match = await createMatch(organizerToken, {
+      activity_id: 1,
+      match_time: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+    });
+    const matchId = match.id;
+
+    // 參與者加入
+    await joinMatch(participant1Token, matchId);
+
+    // 嘗試使用無效狀態
     const result = await reviewParticipant(
       organizerToken,
       matchId,
-      (await mockLogin(TEST_USERS.participant1)).user.id,
+      participant1UserId,
       'invalid_status' as any
     );
 
     expect(result.ok).toBe(false);
-    expect(result.error).toContain('無效的審核狀態');
+    expect(result.error).toContain('Invalid status');
+
+    await setupTestData.cleanMatchData(matchId);
   });
 });

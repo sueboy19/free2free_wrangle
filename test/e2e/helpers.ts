@@ -42,6 +42,20 @@ export const TEST_USERS = {
 const BASE_URL = 'http://localhost:8787';
 
 /**
+ * 從 token 中解析 user_id
+ */
+function getUserIdFromToken(token: string): number | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const payload = JSON.parse(atob(parts[1]));
+    return payload.user_id;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Mock 登入獲取 token
  */
 export async function mockLogin(user: typeof TEST_USERS.organizer) {
@@ -89,13 +103,23 @@ export async function createMatch(
   try {
     data = JSON.parse(text);
   } catch (e) {
-    console.log('[createMatch] JSON parse error, response text:', text.slice(0, 500));
-    throw new Error(`Create match failed (${response.status}): ${text.slice(0, 200)}`);
+    console.log('[createMatch] JSON parse error:', text.slice(0, 200));
+    return {
+      ok: false,
+      status: response.status,
+      data: null,
+      error: `JSON parse error: ${text.slice(0, 100)}`,
+    };
   }
 
-  if (!response.ok) {
-    console.log('[createMatch] API error:', data);
-    throw new Error(`Create match failed (${response.status}): ${data.message || 'Unknown error'}`);
+  // Check for error in response
+  if (data.error) {
+    return {
+      ok: false,
+      status: response.status,
+      data: null,
+      error: data.error,
+    };
   }
 
   console.log('[createMatch] Success:', data.data);
@@ -128,11 +152,22 @@ export async function joinMatch(token: string, matchId: number) {
     };
   }
 
+  // Check for error in response
+  if (data.error) {
+    console.log('[joinMatch] Error response:', { matchId, error: data.error, response: data });
+    return {
+      ok: false,
+      status: response.status,
+      data: null,
+      error: data.error,
+    };
+  }
+
   return {
-    ok: response.ok,
+    ok: true,
     status: response.status,
     data: data.data,
-    error: !response.ok ? data.message || 'Unknown error' : null,
+    error: undefined,
   };
 }
 
@@ -184,11 +219,29 @@ export async function reviewParticipant(
     };
   }
 
+  // Check for error in response
+  if (data.error) {
+    console.log('[reviewParticipant] Error:', {
+      matchId,
+      participantId,
+      status,
+      error: data.error,
+      response: data,
+      tokenUserId: getUserIdFromToken(token),
+    });
+    return {
+      ok: false,
+      status: response.status,
+      data: null,
+      error: data.error,
+    };
+  }
+
   return {
-    ok: response.ok,
+    ok: true,
     status: response.status,
     data: data.data,
-    error: !response.ok ? data.message || 'Unknown error' : null,
+    error: undefined,
   };
 }
 
@@ -249,11 +302,21 @@ export async function createReview(
     };
   }
 
+  // Check for error in response
+  if (data.error) {
+    return {
+      ok: false,
+      status: response.status,
+      data: null,
+      error: data.error,
+    };
+  }
+
   return {
-    ok: response.ok,
+    ok: true,
     status: response.status,
     data: data.data,
-    error: !response.ok ? data.message || 'Unknown error' : null,
+    error: undefined,
   };
 }
 
