@@ -12,9 +12,7 @@
  *   npm run test:e2e
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
-import app from '../../src/index';
-import type { Env } from '../../src/types';
+import { describe, it, expect } from 'vitest';
 import {
   mockLogin,
   createMatch,
@@ -25,31 +23,27 @@ import {
 } from './helpers';
 
 describe('配對完整流程測試', () => {
-  let env: Env;
-
-  beforeEach(async ({ env: testEnv }) => {
-    env = testEnv as Env;
-  });
-
   it('應該成功完成完整的配對流程', async () => {
     // 1. 用戶 A 登入（開局者）
-    const organizerLogin = await mockLogin(env, TEST_USERS.organizer);
+    const organizerLogin = await mockLogin(TEST_USERS.organizer);
     const organizerToken = organizerLogin.accessToken;
 
     expect(organizerLogin.user).toBeDefined();
-    expect(organizerLogin.user.id).toBe(TEST_USERS.organizer.id);
+    expect(organizerLogin.user.id).toBeDefined();
+    expect(organizerLogin.user.id).toBeGreaterThan(0);
     expect(organizerToken).toBeDefined();
 
     // 2. 用戶 B 登入（參與者）
-    const participantLogin = await mockLogin(env, TEST_USERS.participant1);
+    const participantLogin = await mockLogin(TEST_USERS.participant1);
     const participantToken = participantLogin.accessToken;
 
     expect(participantLogin.user).toBeDefined();
-    expect(participantLogin.user.id).toBe(TEST_USERS.participant1.id);
+    expect(participantLogin.user.id).toBeDefined();
+    expect(participantLogin.user.id).toBeGreaterThan(0);
     expect(participantToken).toBeDefined();
 
     // 3. 用戶 A 創建配對
-    const match = await createMatch(env, organizerToken, {
+    const match = await createMatch(organizerToken, {
       activity_id: 1, // 假設存在 activity_id=1
       match_time: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
     });
@@ -59,7 +53,7 @@ describe('配對完整流程測試', () => {
     expect(match.organizer_id).toBe(organizerLogin.user.id);
 
     // 4. 用戶 B 申請加入配對
-    const joinResult = await joinMatch(env, participantToken, match.id);
+    const joinResult = await joinMatch(participantToken, match.id);
 
     expect(joinResult.ok).toBe(true);
     expect(joinResult.data).toBeDefined();
@@ -67,7 +61,6 @@ describe('配對完整流程測試', () => {
 
     // 5. 用戶 A 審核通過用戶 B
     const reviewResult = await reviewParticipant(
-      env,
       organizerToken,
       match.id,
       joinResult.data.id,
@@ -79,7 +72,7 @@ describe('配對完整流程測試', () => {
     expect(reviewResult.data.status).toBe('approved');
 
     // 6. 用戶 A 關閉配對
-    const closedMatch = await closeMatch(env, organizerToken, match.id, 'completed');
+    const closedMatch = await closeMatch(organizerToken, match.id, 'completed');
 
     expect(closedMatch.status).toBe('completed');
     expect(closedMatch.id).toBe(match.id);

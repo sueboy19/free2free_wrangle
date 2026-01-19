@@ -1,13 +1,11 @@
 /**
- * E2E 測試輔助函數 - 使用 vitest-pool-workers
+ * E2E 測試輔助函數 - 使用 fetch 直接調用 API
  *
  * 提供可重用的測試工具，包括：
  * - Mock 登入
- * - 直接調用 Worker 端點（不使用 HTTP）
- * - 測試數據清理
+ * - 直接用 fetch 調用 API 端點
  */
 
-import app from '../../src/index';
 import type { Env } from '../../src/types';
 
 /**
@@ -41,19 +39,17 @@ export const TEST_USERS = {
   },
 };
 
+const BASE_URL = 'http://localhost:8787';
+
 /**
  * Mock 登入獲取 token
  */
-export async function mockLogin(env: Env, user: typeof TEST_USERS.organizer) {
-  const response = await app.request(
-    '/auth/mock',
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(user),
-    },
-    env
-  );
+export async function mockLogin(user: typeof TEST_USERS.organizer) {
+  const response = await fetch(`${BASE_URL}/auth/mock`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(user),
+  });
 
   const data = await response.json();
 
@@ -72,48 +68,65 @@ export async function mockLogin(env: Env, user: typeof TEST_USERS.organizer) {
  * 創建配對
  */
 export async function createMatch(
-  env: Env,
   token: string,
   matchData: { activity_id: number; match_time: string }
 ) {
-  const response = await app.request(
-    '/matches',
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(matchData),
+  console.log('[createMatch] Calling API...', { activity_id: matchData.activity_id });
+  const response = await fetch(`${BASE_URL}/matches`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
     },
-    env
-  );
+    body: JSON.stringify(matchData),
+  });
+  console.log('[createMatch] Response status:', response.status);
+  console.log('[createMatch] Response headers:', Object.fromEntries(response.headers.entries()));
 
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(`Create match failed: ${data.message || 'Unknown error'}`);
+  // Read response as text first, then try to parse as JSON
+  const text = await response.text();
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch (e) {
+    console.log('[createMatch] JSON parse error, response text:', text.slice(0, 500));
+    throw new Error(`Create match failed (${response.status}): ${text.slice(0, 200)}`);
   }
 
+  if (!response.ok) {
+    console.log('[createMatch] API error:', data);
+    throw new Error(`Create match failed (${response.status}): ${data.message || 'Unknown error'}`);
+  }
+
+  console.log('[createMatch] Success:', data.data);
   return data.data;
 }
 
 /**
  * 申請加入配對
  */
-export async function joinMatch(env: Env, token: string, matchId: number) {
-  const response = await app.request(
-    `/matches/${matchId}/join`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+export async function joinMatch(token: string, matchId: number) {
+  const response = await fetch(`${BASE_URL}/matches/${matchId}/join`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
     },
-    env
-  );
+  });
 
-  const data = await response.json();
+  // Read response as text first, then try to parse as JSON
+  const text = await response.text();
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch (e) {
+    console.log('[joinMatch] JSON parse error:', text.slice(0, 200));
+    return {
+      ok: false,
+      status: response.status,
+      data: null,
+      error: `JSON parse error: ${text.slice(0, 100)}`,
+    };
+  }
 
   return {
     ok: response.ok,
@@ -127,14 +140,13 @@ export async function joinMatch(env: Env, token: string, matchId: number) {
  * 並發參與配對（用於競態條件測試）
  */
 export async function concurrentJoin(
-  env: Env,
   token: string,
   matchId: number,
   count: number
 ): Promise<Array<{ ok: boolean; status: number; data?: any; error?: string }>> {
   const promises = Array(count)
     .fill(null)
-    .map(() => joinMatch(env, token, matchId));
+    .map(() => joinMatch(token, matchId));
 
   return Promise.all(promises);
 }
@@ -143,26 +155,34 @@ export async function concurrentJoin(
  * 審核參與者
  */
 export async function reviewParticipant(
-  env: Env,
   token: string,
   matchId: number,
   participantId: number,
   status: 'approved' | 'rejected'
 ) {
-  const response = await app.request(
-    `/matches/${matchId}/participants/${participantId}`,
-    {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ status }),
+  const response = await fetch(`${BASE_URL}/matches/${matchId}/participants/${participantId}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
     },
-    env
-  );
+    body: JSON.stringify({ status }),
+  });
 
-  const data = await response.json();
+  // Read response as text first, then try to parse as JSON
+  const text = await response.text();
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch (e) {
+    console.log('[reviewParticipant] JSON parse error:', text.slice(0, 200));
+    return {
+      ok: false,
+      status: response.status,
+      data: null,
+      error: `JSON parse error: ${text.slice(0, 100)}`,
+    };
+  }
 
   return {
     ok: response.ok,
@@ -176,23 +196,18 @@ export async function reviewParticipant(
  * 關閉配對
  */
 export async function closeMatch(
-  env: Env,
   token: string,
   matchId: number,
   status: 'completed' | 'cancelled'
 ) {
-  const response = await app.request(
-    `/matches/${matchId}/status`,
-    {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ status }),
+  const response = await fetch(`${BASE_URL}/matches/${matchId}/status`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
     },
-    env
-  );
+    body: JSON.stringify({ status }),
+  });
 
   const data = await response.json();
 
@@ -207,24 +222,32 @@ export async function closeMatch(
  * 創建評分
  */
 export async function createReview(
-  env: Env,
   token: string,
   reviewData: { match_id: number; reviewee_id: number; score: number; comment?: string }
 ) {
-  const response = await app.request(
-    '/reviews',
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(reviewData),
+  const response = await fetch(`${BASE_URL}/reviews`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
     },
-    env
-  );
+    body: JSON.stringify(reviewData),
+  });
 
-  const data = await response.json();
+  // Read response as text first, then try to parse as JSON
+  const text = await response.text();
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch (e) {
+    console.log('[createReview] JSON parse error:', text.slice(0, 200));
+    return {
+      ok: false,
+      status: response.status,
+      data: null,
+      error: `JSON parse error: ${text.slice(0, 100)}`,
+    };
+  }
 
   return {
     ok: response.ok,
@@ -241,16 +264,18 @@ export const setupTestData = {
   /**
    * 清理測試數據
    */
-  async cleanMatchData(env: Env, matchId: number) {
-    await env.DB.prepare(`DELETE FROM reviews WHERE match_id = ?`).bind(matchId).run();
-    await env.DB.prepare(`DELETE FROM match_participants WHERE match_id = ?`).bind(matchId).run();
-    await env.DB.prepare(`DELETE FROM matches WHERE id = ?`).bind(matchId).run();
+  async cleanMatchData(matchId: number) {
+    await fetch(`${BASE_URL}/test/cleanup/match/${matchId}`, {
+      method: 'DELETE',
+    });
   },
 
   /**
    * 清理測試用戶
    */
-  async cleanUser(env: Env, socialId: string) {
-    await env.DB.prepare(`DELETE FROM users WHERE social_id = ?`).bind(socialId).run();
+  async cleanUser(socialId: string) {
+    await fetch(`${BASE_URL}/test/cleanup/user/${socialId}`, {
+      method: 'DELETE',
+    });
   },
 };
