@@ -145,10 +145,16 @@ export const useAuthStore = defineStore('auth', () => {
   const fetchUserProfile = async () => {
     try {
       const response = await apiClient.get('/profile');
-      user.value = response.data;
-      localStorage.setItem('user', JSON.stringify(response.data));
-    } catch (error) {
-      console.error('獲取用戶資料失敗:', error);
+      // 統一返回格式：{ data: user }
+      const userData = response.data?.data || response.data;
+      user.value = userData;
+      localStorage.setItem('user', JSON.stringify(userData));
+    } catch (error: any) {
+      console.error('獲取用戶資料失敗:', {
+        message: error?.message,
+        response: error?.response?.data,
+        status: error?.response?.status,
+      });
       logout();
     }
   };

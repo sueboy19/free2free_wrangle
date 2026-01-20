@@ -254,16 +254,6 @@ router.post('/auth/logout', async (c) => {
   }
 });
 
-router.get('/profile', authMiddleware, async (c) => {
-  const user = c.get('user' as never);
-
-  if (!user) {
-    throw new Error('Authentication required');
-  }
-
-  return c.json(user);
-});
-
 router.get('/auth/me', authMiddleware, async (c) => {
   const user = c.get('user' as never);
 
@@ -281,7 +271,7 @@ router.get('/profile', authMiddleware, async (c) => {
     throw new Error('Authentication required');
   }
 
-  return c.json(user);
+  return c.json({ data: user });
 });
 
 router.get('/logout', async (c) => {
