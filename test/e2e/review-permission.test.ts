@@ -269,10 +269,4 @@ describe('E2E 測試 4：評分權限驗證測試', () => {
     expect(result2.ok).toBe(false);
     expect(result2.error).toContain('Missing required fields');
   });
-
-  it('開局者也可以參與評分（如果開局者也參與了配對）', async () => {
-    // 開局者不能參與自己的配對，所以這個測試需要調整
-    // 暫時跳過
-    expect(true).toBe(true);
-  });
 });

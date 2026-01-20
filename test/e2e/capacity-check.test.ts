@@ -61,19 +61,6 @@ describe('E2E 測試 2：配對容量驗證測試（當前行為）', () => {
     expect(user3Result.data.status).toBe('pending');
   });
 
-  it('記錄：當前系統缺少容量檢查', async () => {
-    // 這個測試只是用於記錄當前系統的行為
-    const testResult = await joinMatch(participant1Token, matchId);
-
-    if (testResult.ok) {
-      console.log('✓ 確認：當前系統沒有容量檢查（參與者可以無限制加入）');
-      expect(testResult.error).toBeNull();
-    } else if (testResult.error?.includes('配對已滿員')) {
-      console.log('✓ 確認：系統已經實現容量檢查');
-      // 如果測試失敗，說明系統已經修復了容量問題
-    }
-  });
-
   it('開局者不能參與自己的配對', async () => {
     const result = await joinMatch(organizerToken, matchId);
 

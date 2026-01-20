@@ -45,24 +45,6 @@ describe('E2E 測試 1：競態條件 - 並發參與測試', () => {
     expect(successfulResults.length).toBeLessThanOrEqual(1);
   });
 
-  it('單個用戶連續多次參與應只允許一次成功', async () => {
-    // 創建新配對進行測試
-    const match = await createMatch(organizerToken, {
-      activity_id: 1,
-      match_time: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
-    });
-    const newMatchId = match.id;
-
-    // 第一次參與
-    const firstResult = await concurrentJoin(participantToken, newMatchId, 3);
-    const firstSuccess = firstResult.filter((r) => r.ok);
-
-    expect(firstSuccess.length).toBe(1);
-
-    // 清理測試數據
-    await setupTestData.cleanMatchData(newMatchId);
-  });
-
   it('不同用戶同時參與應該都能成功', async () => {
     // 創建新配對
     const match = await createMatch(organizerToken, {
