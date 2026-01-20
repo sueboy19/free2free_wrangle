@@ -1,0 +1,17 @@
+{
+  "name": "free2free-e2e-tests",
+  "version": "1.0.0",
+  "description": "前端 E2E 自動化測試",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:debug": "playwright test --debug",
+    "test:ui": "playwright test --ui",
+    "test:report": "playwright show-report",
+    "test:install": "playwright install --with-deps"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0",
+    "@types/node": "^20.0.0"
+  }
+}
