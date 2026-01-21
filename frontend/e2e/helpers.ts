@@ -28,7 +28,21 @@ export async function mockLogin(page, userType: 'organizer' | 'participant') {
  * @param page Playwright Page 物件
  */
 export async function logout(page) {
-  await page.getByRole('button', { name: '登出' }).click();
+  // 檢查是否在移動端（漢堡選單可見）
+  const hamburgerMenu = await page.locator('button[aria-label="選單"]').count();
+
+  if (hamburgerMenu > 0) {
+    // 移動端：打開選單
+    await page.locator('button[aria-label="選單"]').click();
+    await page.waitForTimeout(500);
+
+    // 點擊登出按鈕（在選單中）
+    await page.getByRole('button', { name: '登出' }).click();
+  } else {
+    // 桌面端：直接點擊登出按鈕
+    await page.getByRole('button', { name: '登出' }).click();
+  }
+
   await page.waitForURL('/login', { timeout: 5000 });
   await page.waitForTimeout(1000); // 等待登出提示
 
@@ -46,11 +60,30 @@ export async function logout(page) {
 export async function createMatch(page, activityName: string, date: string) {
   await page.goto('/matches/create');
 
+  // 等待頁面加載
+  await page.waitForLoadState('domcontentloaded');
+
+  // 等待「載入中...」消失
+  try {
+    await page.waitForSelector('text=載入活動中...', { state: 'hidden', timeout: 15000 });
+  } catch {
+    console.log('Waiting for activities to load timed out, continuing...');
+  }
+
+  // 等待活動列表加載完成，最多等待 20 秒
+  await page.waitForSelector('select[name="activity"]', {
+    state: 'visible',
+    timeout: 20000,
+  });
+
+  // 再等待一下確保下拉選項已渲染
+  await page.waitForTimeout(500);
+
   // 選擇活動
-  await page.getByRole('combobox').selectOption(activityName);
+  await page.locator('select[name="activity"]').selectOption({ label: activityName });
 
   // 輸入日期
-  await page.getByRole('textbox').fill(date);
+  await page.locator('input[type="datetime-local"]').fill(date);
   await page.waitForTimeout(500);
 
   // 提交表單
@@ -130,15 +163,24 @@ export async function getMatchStatus(page, matchId: string): Promise<string> {
  */
 export async function navigateToMyMatches(page, tab: 'organizing' | 'participating' | 'history') {
   await page.goto('/my-matches');
-  await page.waitForLoadState('networkidle');
 
+  // 等待頁面加載
+  await page.waitForLoadState('domcontentloaded');
+
+  // 等待 Vue 應用掛載並渲染
+  await page.waitForTimeout(2000);
+
+  // 使用文字選擇器而不是 data-test 屬性
   const buttonTexts = {
-    organizing: '我開局的',
-    participating: '我參與的',
-    history: '歷史配對',
+    organizing: /我開局的/,
+    participating: /我參與的/,
+    history: /歷史配對/,
   };
 
-  await page.getByRole('button', { name: buttonTexts[tab] }).click();
+  const buttonTextPattern = buttonTexts[tab];
+
+  // 點擊包含指定文字的按鈕
+  await page.locator('button').filter({ hasText: buttonTextPattern }).first().click();
   await page.waitForTimeout(500);
 }
 

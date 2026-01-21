@@ -1,43 +1,7 @@
 <template>
   <div class="min-h-screen bg-gray-50">
     <!-- 導航列 -->
-    <nav class="bg-white shadow-sm border-b">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between h-16">
-          <div class="flex items-center">
-            <router-link to="/" class="text-xl font-bold text-gray-900">買一送一配對</router-link>
-          </div>
-
-          <div class="hidden md:flex items-center space-x-4">
-            <router-link
-              to="/"
-              class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
-            >
-              首頁
-            </router-link>
-            <router-link
-              to="/matches"
-              class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
-            >
-              配對列表
-            </router-link>
-            <router-link
-              to="/my-matches"
-              class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
-            >
-              我的配對
-            </router-link>
-            <router-link
-              to="/profile"
-              class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
-            >
-              個人資料
-            </router-link>
-            <button @click="authStore.logout" class="btn-secondary">登出</button>
-          </div>
-        </div>
-      </div>
-    </nav>
+    <Navigation />
 
     <!-- 主要內容 -->
     <main class="max-w-3xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
@@ -59,19 +23,21 @@
               ></div>
               <p class="text-gray-500 mt-2">載入活動中...</p>
             </div>
-            <div v-else-if="activities.length === 0" class="text-center py-4">
+            <div v-else-if="!isLoading && activities.length === 0" class="text-center py-4">
               <p class="text-gray-500">暫無可用的活動</p>
               <router-link to="/" class="text-primary-600 hover:text-primary-500"
                 >返回首頁</router-link
               >
             </div>
-            <select v-else v-model="formData.activity_id" class="input" required>
-              <option value="">請選擇活動</option>
-              <option v-for="activity in activities" :key="activity.id" :value="activity.id">
-                {{ activity.title }} - {{ activity.location_name || '未知地點' }}
-              </option>
-            </select>
-            <p class="text-sm text-gray-500 mt-1">如果沒有適合的活動，請先聯繫管理員創建。</p>
+            <div v-else>
+              <select v-model="formData.activity_id" class="input" required name="activity">
+                <option value="">請選擇活動</option>
+                <option v-for="activity in activities" :key="activity.id" :value="activity.id">
+                  {{ activity.title }} - {{ activity.location_name || '未知地點' }}
+                </option>
+              </select>
+              <p class="text-sm text-gray-500 mt-1">如果沒有適合的活動，請先聯繫管理員創建。</p>
+            </div>
           </div>
 
           <!-- 配對時間 -->
@@ -144,6 +110,7 @@ import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import ApiService from '@/services/api';
 import { useToast } from 'vue-toastification';
+import Navigation from '@/components/Navigation.vue';
 
 const router = useRouter();
 const authStore = useAuthStore();

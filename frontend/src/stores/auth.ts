@@ -145,9 +145,11 @@ export const useAuthStore = defineStore('auth', () => {
   // 獲取用戶資料
   const fetchUserProfile = async () => {
     try {
+      console.log('fetchUserProfile called, token:', !!token.value);
       const response = await apiClient.get('/profile');
       // 統一返回格式：{ data: user }
       const userData = response.data?.data || response.data;
+      console.log('fetchUserProfile success:', userData?.name);
       user.value = userData;
       localStorage.setItem('user', JSON.stringify(userData));
     } catch (error: any) {
@@ -201,12 +203,6 @@ export const useAuthStore = defineStore('auth', () => {
         token.value = savedToken;
         user.value = JSON.parse(savedUser);
         setAuthHeader();
-
-        // 驗證 token 是否有效
-        fetchUserProfile().catch(() => {
-          // 如果驗證失敗，清除無效的會話
-          logout();
-        });
       } catch (error) {
         console.error('恢復會話失敗:', error);
         logout();

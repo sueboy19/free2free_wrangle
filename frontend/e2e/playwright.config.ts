@@ -14,6 +14,10 @@ const config: PlaywrightTestConfig = defineConfig({
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
+    // 捕獲瀏覽器 console 日誌
+    launchOptions: {
+      args: ['--enable-logging'],
+    },
   },
 
   // 基本超時設定

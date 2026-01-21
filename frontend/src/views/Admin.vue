@@ -1,49 +1,7 @@
 <template>
   <div class="min-h-screen bg-gray-50">
     <!-- 導航列 -->
-    <nav class="bg-white shadow-sm border-b">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between h-16">
-          <div class="flex items-center">
-            <router-link to="/" class="text-xl font-bold text-gray-900">買一送一配對</router-link>
-          </div>
-
-          <div class="hidden md:flex items-center space-x-4">
-            <router-link
-              to="/"
-              class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
-            >
-              首頁
-            </router-link>
-            <router-link
-              to="/matches"
-              class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
-            >
-              配對列表
-            </router-link>
-            <router-link
-              to="/my-matches"
-              class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
-            >
-              我的配對
-            </router-link>
-            <router-link
-              to="/profile"
-              class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
-            >
-              個人資料
-            </router-link>
-            <router-link
-              to="/admin"
-              class="text-primary-600 px-3 py-2 rounded-md text-sm font-medium"
-            >
-              管理後台
-            </router-link>
-            <button @click="authStore.logout" class="btn-secondary">登出</button>
-          </div>
-        </div>
-      </div>
-    </nav>
+    <Navigation />
 
     <!-- 主要內容 -->
     <main class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
@@ -335,6 +293,7 @@ import { ref, onMounted } from 'vue';
 import { useAuthStore } from '@/stores/auth';
 import ApiService from '@/services/api';
 import { useToast } from 'vue-toastification';
+import Navigation from '@/components/Navigation.vue';
 
 const authStore = useAuthStore();
 const toast = useToast();

@@ -1,43 +1,7 @@
 <template>
   <div class="min-h-screen bg-gray-50">
     <!-- 導航列 -->
-    <nav class="bg-white shadow-sm border-b">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between h-16">
-          <div class="flex items-center">
-            <router-link to="/" class="text-xl font-bold text-gray-900">買一送一配對</router-link>
-          </div>
-
-          <div class="hidden md:flex items-center space-x-4">
-            <router-link
-              to="/"
-              class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
-            >
-              首頁
-            </router-link>
-            <router-link
-              to="/matches"
-              class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
-            >
-              配對列表
-            </router-link>
-            <router-link
-              to="/my-matches"
-              class="text-primary-600 px-3 py-2 rounded-md text-sm font-medium"
-            >
-              我的配對
-            </router-link>
-            <router-link
-              to="/profile"
-              class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
-            >
-              個人資料
-            </router-link>
-            <button @click="authStore.logout" class="btn-secondary">登出</button>
-          </div>
-        </div>
-      </div>
-    </nav>
+    <Navigation />
 
     <!-- 主要內容 -->
     <main class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
@@ -49,15 +13,19 @@
 
       <!-- 標籤頁 -->
       <div class="mb-6">
-        <nav class="flex space-x-8" aria-label="Tabs">
+        <nav class="flex flex-wrap overflow-x-auto gap-2 sm:gap-8 -mx-4 px-4" aria-label="Tabs">
           <button
             @click="activeTab = 'organizing'"
             :class="[
               activeTab === 'organizing'
                 ? 'border-primary-500 text-primary-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
-              'whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm',
+              'whitespace-nowrap py-2 px-3 border-b-2 font-medium text-sm flex-shrink-0',
             ]"
+            role="tab"
+            :aria-selected="activeTab === 'organizing'"
+            aria-controls="organizing-panel"
+            data-test="tab-organizing"
           >
             我開局的 ({{ organizedMatches.length }})
           </button>
@@ -67,8 +35,12 @@
               activeTab === 'participating'
                 ? 'border-primary-500 text-primary-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
-              'whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm',
+              'whitespace-nowrap py-2 px-3 border-b-2 font-medium text-sm flex-shrink-0',
             ]"
+            role="tab"
+            :aria-selected="activeTab === 'participating'"
+            aria-controls="participating-panel"
+            data-test="tab-participating"
           >
             我參與的 ({{ participatingMatches.length }})
           </button>
@@ -78,8 +50,12 @@
               activeTab === 'past'
                 ? 'border-primary-500 text-primary-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
-              'whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm',
+              'whitespace-nowrap py-2 px-3 border-b-2 font-medium text-sm flex-shrink-0',
             ]"
+            role="tab"
+            :aria-selected="activeTab === 'past'"
+            aria-controls="past-panel"
+            data-test="tab-history"
           >
             歷史配對 ({{ pastMatches.length }})
           </button>
@@ -330,13 +306,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import { useAuthStore } from '@/stores/auth';
 import ApiService from '@/services/api';
 import { format } from 'date-fns';
 import { zhTW } from 'date-fns/locale';
+import Navigation from '@/components/Navigation.vue';
+import { useRoute } from 'vue-router';
 
 const authStore = useAuthStore();
+const route = useRoute();
 
 const isLoading = ref(false);
 const activeTab = ref('organizing');
@@ -383,4 +362,14 @@ const loadMatches = async () => {
 onMounted(() => {
   loadMatches();
 });
+
+// 監聽路由變化，重新加載數據
+watch(
+  () => route.path,
+  (newPath) => {
+    if (newPath === '/my-matches') {
+      loadMatches();
+    }
+  }
+);
 </script>

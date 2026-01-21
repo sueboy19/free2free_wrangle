@@ -33,6 +33,10 @@ cd frontend/e2e && npx playwright test --project=chromium
 cd frontend/e2e && npx playwright test --project=mobile
 ```
 
+```bash
+cd frontend/e2e && npx playwright test --project=chromium -g "用戶B 可以申請加入配對"
+```
+
 這會運行以下測試：
 
 - 配對完整流程測試（`test-flow.test.ts`）
