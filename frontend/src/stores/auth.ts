@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { apiClient } from '@/services/api';
 import { useToast } from 'vue-toastification';
+import router from '@/router';
 
 export interface User {
   id: number;
@@ -180,6 +181,9 @@ export const useAuthStore = defineStore('auth', () => {
         // 忽略登出 API 錯誤
         console.warn('後端登出失敗:', error);
       }
+
+      // 導航到登入頁面
+      await router.push('/login');
 
       toast.success('已成功登出');
     } catch (error) {

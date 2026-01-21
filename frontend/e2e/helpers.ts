@@ -29,12 +29,12 @@ export async function mockLogin(page, userType: 'organizer' | 'participant') {
  */
 export async function logout(page) {
   await page.getByRole('button', { name: '登出' }).click();
-  await page.waitForURL('/', { timeout: 5000 });
+  await page.waitForURL('/login', { timeout: 5000 });
   await page.waitForTimeout(1000); // 等待登出提示
 
   // 確認返回登入頁面
-  const loginButton = await page.getByRole('link', { name: '登入' });
-  return loginButton !== null;
+  const pageTitle = await page.title();
+  return pageTitle.includes('登入');
 }
 
 /**
@@ -69,6 +69,14 @@ export async function createMatch(page, activityName: string, date: string) {
  */
 export async function joinMatch(page, matchId: string) {
   await page.goto(`/matches/${matchId}`);
+  await page.waitForLoadState('networkidle');
+
+  // 檢查是否已經參與過
+  const alreadyJoined = (await page.getByText('待審核').first().count()) > 0;
+  if (alreadyJoined) {
+    // 如果已經參與過，直接返回 true
+    return true;
+  }
 
   // 點擊"參與配對"按鈕
   await page.getByRole('button', { name: '參與配對' }).click();
@@ -80,19 +88,39 @@ export async function joinMatch(page, matchId: string) {
 }
 
 /**
+ * 檢查用戶在配對中的狀態
+ * @param page Playwright Page 物件
+ * @param matchId 配對 ID
+ */
+export async function getUserMatchStatus(page, matchId: string): Promise<string> {
+  await page.goto(`/matches/${matchId}`);
+  await page.waitForLoadState('networkidle');
+
+  // 檢查參與按鈕上方的狀態文本（"待審核"或"已申請"）
+  const statusSpan = page
+    .locator('span.btn-secondary')
+    .filter({ hasText: /^(待審核|已申請)$/ })
+    .first();
+
+  if ((await statusSpan.count()) > 0) {
+    return await statusSpan.textContent();
+  }
+
+  // 如果沒有找到參與狀態，檢查配對的狀態
+  const matchStatus = await page
+    .locator('span')
+    .filter({ hasText: /^(進行中|待審核|已取消|已完成)$/ })
+    .first();
+  return await matchStatus.textContent();
+}
+
+/**
  * 檢查配對狀態
  * @param page Playwright Page 物件
  * @param matchId 配對 ID
  */
 export async function getMatchStatus(page, matchId: string): Promise<string> {
-  await page.goto(`/matches/${matchId}`);
-  await page.waitForLoadState('networkidle');
-
-  const statusElement = await page
-    .locator('.generic')
-    .filter({ hasText: /^(進行中|待審核|已取消|已完成)$/ })
-    .first();
-  return await statusElement.textContent();
+  return await getUserMatchStatus(page, matchId);
 }
 
 /**
@@ -130,12 +158,18 @@ export async function getMyMatchesCount(page): Promise<number> {
 }
 
 /**
- * 訪問個人資料頁面
+ * 等待並關閉提示
  * @param page Playwright Page 物件
  */
-export async function navigateToProfile(page) {
-  await page.goto('/profile');
-  await page.waitForLoadState('networkidle');
+export async function closeToast(page) {
+  await page.waitForTimeout(2000);
+  const closeButton = page.getByRole('button', { name: 'close' }).first();
+  if ((await closeButton.count()) > 0) {
+    await closeButton.click().catch(() => {
+      // Toast 可能已經自動關閉
+    });
+    await page.waitForTimeout(500);
+  }
 }
 
 /**
@@ -149,14 +183,10 @@ export async function expectPageTitle(page, expectedTitle: string) {
 }
 
 /**
- * 等待並關閉提示
+ * 訪問個人資料頁面
  * @param page Playwright Page 物件
  */
-export async function closeToast(page) {
-  await page.waitForTimeout(2000);
-  const closeButton = await page.getByRole('button', { name: 'close' }).first();
-  if (closeButton) {
-    await closeButton.click();
-    await page.waitForTimeout(500);
-  }
+export async function navigateToProfile(page) {
+  await page.goto('/profile');
+  await page.waitForLoadState('networkidle');
 }

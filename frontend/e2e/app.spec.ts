@@ -71,9 +71,15 @@ test.describe('基本功能導航測試', () => {
     await page.getByRole('link', { name: '配對列表' }).click();
     expect(await page.title()).toContain('配對列表');
 
+    // 返回首頁
+    await page.goto('/');
+
     // 測試創建配對導航
     await page.getByRole('link', { name: '創建配對' }).click();
     expect(await page.title()).toContain('創建配對');
+
+    // 返回首頁
+    await page.goto('/');
 
     // 測試我的配對導航
     await page.getByRole('link', { name: '我的配對' }).click();
@@ -175,6 +181,7 @@ test.describe('配對參與測試', () => {
 
     // 導航到配對詳情
     await page.goto(`/matches/${matchId}`);
+    await page.waitForLoadState('networkidle');
 
     // 檢查是否顯示參與者管理區塊
     const participantSection = await page.getByRole('heading', { name: '參與者管理' });
@@ -284,7 +291,7 @@ test.describe('我的配對頁面功能測試', () => {
 
     // 檢查是否顯示統計數據
     const stats = await page
-      .locator('.generic')
+      .locator('div.text-sm')
       .filter({ hasText: /^(開局數量|參與數量|完成數量)$/ })
       .all();
     expect(stats.length).toBe(3);

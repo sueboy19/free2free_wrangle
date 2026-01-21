@@ -27,6 +27,12 @@
 npm run test:e2e
 ```
 
+```bash
+cd frontend/e2e && npx playwright test --project=chromium 
+
+cd frontend/e2e && npx playwright test --project=mobile
+```
+
 這會運行以下測試：
 
 - 配對完整流程測試（`test-flow.test.ts`）
