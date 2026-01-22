@@ -43,36 +43,55 @@ npm run test:e2e
 
 #### Frontend E2E 測試（Playwright）
 
-運行所有 Frontend E2E 測試：
+**重要說明**：
+
+- ✅ **自動執行 db:reset**：e2e 腳本會自動重置測試資料庫，確保測試環境乾淨
+- 🚫 **chromium 和 mobile 必須分開執行**：同時執行會導致測試超時（timeout）
+
+**從根目錄一鍵執行（推薦）**：
 
 ```bash
-cd frontend/e2e && npx playwright test
+# 運行桌面版測試（Chromium）
+npm run e2e -- --project=chromium
+
+# 運行移動版測試（Mobile）
+npm run e2e -- --project=mobile
 ```
 
-運行特定測試環境：
+**在 frontend/e2e 目錄執行**：
 
 ```bash
-# 僅運行桌面版測試（Chromium）
-cd frontend/e2e && npx playwright test --project=chromium
+# 切換到測試目錄
+cd frontend/e2e
 
-# 僅運行移動版測試
-cd frontend/e2e && npx playwright test --project=mobile
+# 運行特定測試環境
+npm test -- --project=chromium  # 桌面版
+npm test -- --project=mobile    # 移動版
 
 # 運行特定測試
-cd frontend/e2e && npx playwright test --project=chromium -g "用戶B 可以申請加入配對"
+npm test -- --project=chromium -g "用戶B 可以申請加入配對"
 ```
 
-npm run db:reset
+**其他執行方式**：
 
+```bash
+# 有視窗執行
+npm run e2e:headed -- --project=chromium
+
+# 調試模式
+npm run e2e:debug -- --project=chromium
+
+# UI 模式
+npm run e2e:ui
+
+# 查看測試報告
+npm run e2e:report
 ```
 
-清理並重置遠程資料庫
+**注意**：
 
-```
-
-npm run db:reset:remote
-
-````
+- `npm run e2e`、`e2e:headed`、`e2e:debug` 都會自動執行 `db:reset`
+- 可以通過 `--` 後的參數傳遞給 Playwright，例如 `--project=chromium` 或 `-g "測試名稱"`
 
 ## 測試結果說明
 
@@ -156,7 +175,7 @@ npm run db:reset:remote
 it('should do something', async ({ env }) => {
   // 使用 env 參數
 });
-````
+```
 
 而不是：
 

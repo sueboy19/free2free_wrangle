@@ -17,7 +17,13 @@
     "lint:fix": "eslint src --ext .ts --fix",
     "format": "prettier --write \"src/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\"",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "e2e": "node scripts/run-e2e.js",
+    "e2e:headed": "node scripts/run-e2e.js --headed",
+    "e2e:debug": "node scripts/run-e2e.js --debug",
+    "e2e:ui": "npm run test:ui --prefix frontend/e2e",
+    "e2e:report": "npm run test:report --prefix frontend/e2e",
+    "e2e:install": "npm run test:install --prefix frontend/e2e"
   },
   "dependencies": {
     "hono": "^4.11.4",

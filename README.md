@@ -45,24 +45,62 @@ npm run dev
 
 ### 5. 運行測試
 
+#### 後端測試
+
 ```bash
-# 後端測試
+# 運行所有測試
 npm run test
 
-# Frontend E2E 測試
-# 注意：運行 E2E 測試前需要先重置資料庫
-npm run db:reset
+# 運行特定類型的測試
+npm run test:unit
+npm run test:integration
+npm run test:e2e
 
-cd frontend/e2e 
-npx playwright test --project-chromium
-npx playwright test --project-mobile
+# 查看測試覆蓋率
+npm run test:coverage
 ```
+
+#### Frontend E2E 測試（使用 Playwright）
 
 **重要說明**：
 
-- ⚠️ **必須先執行 `npm run db:reset`**：E2E 測試會在資料庫中創建大量配對數據，重置可確保測試環境乾淨
-- 🔧 **並行測試已限制為 1**：避免桌面端和移動端測試同時運行時造成資料庫衝突（如同一配對不能同時被兩個用戶加入）
+- ✅ **自動執行 db:reset**：e2e 腳本會自動重置測試資料庫，確保測試環境乾淨
+- 🚫 **chromium 和 mobile 必須分開執行**：同時執行會導致測試超時（timeout）
 - 📱 **兩套測試環境**：包含 chromium（桌面版）和 mobile（iPhone 13）兩種裝置的測試
+
+**從根目錄一鍵執行（推薦）**：
+
+```bash
+# 運行桌面版測試（Chromium）
+npm run e2e -- --project=chromium
+
+# 運行移動版測試（Mobile）
+npm run e2e -- --project=mobile
+```
+
+**其他執行方式**：
+
+```bash
+# 有視窗執行
+npm run e2e:headed -- --project=chromium
+
+# 調試模式
+npm run e2e:debug -- --project=chromium
+
+# UI 模式（交互式）
+npm run e2e:ui
+
+# 查看測試報告
+npm run e2e:report
+
+# 安裝 Playwright 瀏覽器
+npm run e2e:install
+```
+
+**注意**：
+
+- `npm run e2e`、`e2e:headed`、`e2e:debug` 都會自動執行 `db:reset`
+- 可以通過 `--` 後的參數傳遞給 Playwright，例如 `--project=chromium` 或 `-g "測試名稱"`
 
 ## 開發環境
 

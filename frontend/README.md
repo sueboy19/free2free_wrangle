@@ -187,6 +187,71 @@ npm run preview
 - 完整類型定義
 - 編譯時檢查
 
+## E2E 測試
+
+前端 E2E 測試使用 Playwright 框架，可以在根目錄或 `frontend/e2e` 目錄執行。
+
+### 重要說明
+
+- ✅ **自動執行 db:reset**：e2e 腳本會自動重置測試資料庫，確保測試環境乾淨
+- 🚫 **chromium 和 mobile 必須分開執行**：同時執行會導致測試超時（timeout）
+- 📱 **兩套測試環境**：包含 chromium（桌面版）和 mobile（iPhone 13）兩種裝置的測試
+
+### 從根目錄執行（推薦）
+
+```bash
+# 切換到根目錄
+cd ..
+
+# 運行桌面版測試（Chromium）
+npm run e2e -- --project=chromium
+
+# 運行移動版測試（Mobile）
+npm run e2e -- --project=mobile
+```
+
+### 在 frontend/e2e 目錄執行
+
+```bash
+# 1. 從根目錄執行（會自動重置資料庫）
+npm run e2e -- --project=chromium
+npm run e2e -- --project=mobile
+
+# 或者在 frontend/e2e 目錄執行（需要手動重置資料庫）
+cd frontend/e2e
+npm install  # 首次運行
+npm test -- --project=chromium  # 桌面版
+npm test -- --project=mobile    # 移動版
+```
+
+### 其他執行方式
+
+```bash
+# 有視窗執行（可看到瀏覽器操作）
+npm run e2e:headed -- --project=chromium
+
+# 調試模式（逐步執行）
+npm run e2e:debug -- --project=chromium
+
+# UI 模式（交互式選擇測試）
+npm run e2e:ui
+
+# 查看測試報告
+npm run e2e:report
+
+# 安裝 Playwright 瀏覽器
+npm run e2e:install
+```
+
+**注意**：
+
+- `npm run e2e`、`e2e:headed`、`e2e:debug` 都會自動執行 `db:reset`
+- 可以通過 `--` 後的參數傳遞給 Playwright，例如 `--project=chromium` 或 `-g "測試名稱"`
+
+### 詳細文檔
+
+完整的快速開始指南請參考：[frontend/e2e/QUICKSTART.md](./e2e/QUICKSTART.md)
+
 ## 部署建議
 
 ### 生產環境
