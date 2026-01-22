@@ -19,7 +19,7 @@ export async function mockLogin(page, userType: 'organizer' | 'participant') {
 
   // 確認登入成功
   const welcomeMessage = await page.getByRole('heading', { level: 2 }).first().textContent();
-  const userName = userType === 'organizer' ? 'Test User' : '測試用戶 B (參與者)';
+  const userName = userType === 'organizer' ? '測試用戶 A (開局者)' : '測試用戶 B (參與者)';
   return welcomeMessage?.includes(userName);
 }
 
@@ -29,11 +29,12 @@ export async function mockLogin(page, userType: 'organizer' | 'participant') {
  */
 export async function logout(page) {
   // 檢查是否在移動端（漢堡選單可見）
-  const hamburgerMenu = await page.locator('button[aria-label="選單"]').count();
+  const hamburgerMenu = await page.locator('button[aria-label="選單"]');
 
-  if (hamburgerMenu > 0) {
+  // 檢查按鈕是否可見
+  if (await hamburgerMenu.isVisible()) {
     // 移動端：打開選單
-    await page.locator('button[aria-label="選單"]').click();
+    await hamburgerMenu.click();
     await page.waitForTimeout(500);
 
     // 點擊登出按鈕（在選單中）
@@ -62,12 +63,19 @@ export async function createMatch(page, activityName: string, date: string) {
 
   // 等待頁面加載
   await page.waitForLoadState('domcontentloaded');
+  await page.waitForTimeout(500);
 
-  // 等待「載入中...」消失
-  try {
-    await page.waitForSelector('text=載入活動中...', { state: 'hidden', timeout: 15000 });
-  } catch {
-    console.log('Waiting for activities to load timed out, continuing...');
+  // 檢查是否有載入狀態，如果有則等待消失
+  const loadingElement = page.getByText('載入活動中...');
+  const loadingCount = await loadingElement.count();
+
+  if (loadingCount > 0) {
+    // 等待「載入中...」消失
+    try {
+      await loadingElement.waitFor({ state: 'hidden', timeout: 15000 });
+    } catch {
+      console.log('Waiting for activities to load timed out, continuing...');
+    }
   }
 
   // 等待活動列表加載完成，最多等待 20 秒
@@ -102,7 +110,8 @@ export async function createMatch(page, activityName: string, date: string) {
  */
 export async function joinMatch(page, matchId: string) {
   await page.goto(`/matches/${matchId}`);
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
+  await page.waitForTimeout(1000);
 
   // 檢查是否已經參與過
   const alreadyJoined = (await page.getByText('待審核').first().count()) > 0;
@@ -113,11 +122,16 @@ export async function joinMatch(page, matchId: string) {
 
   // 點擊"參與配對"按鈕
   await page.getByRole('button', { name: '參與配對' }).click();
-  await page.waitForTimeout(1000);
 
-  // 驗證成功加入
-  const successMessage = await page.getByText('成功參與配對').first();
-  return successMessage !== null;
+  // 等待成功消息顯示（使用更靈活的匹配）
+  try {
+    await page.waitForSelector('text=成功參與配對', { state: 'visible', timeout: 5000 });
+    return true;
+  } catch {
+    // 如果沒有看到成功消息，檢查是否已經是待審核狀態
+    const isPending = (await page.getByText('待審核').first().count()) > 0;
+    return isPending;
+  }
 }
 
 /**
@@ -127,7 +141,8 @@ export async function joinMatch(page, matchId: string) {
  */
 export async function getUserMatchStatus(page, matchId: string): Promise<string> {
   await page.goto(`/matches/${matchId}`);
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
+  await page.waitForTimeout(1000);
 
   // 檢查參與按鈕上方的狀態文本（"待審核"或"已申請"）
   const statusSpan = page
@@ -168,7 +183,7 @@ export async function navigateToMyMatches(page, tab: 'organizing' | 'participati
   await page.waitForLoadState('domcontentloaded');
 
   // 等待 Vue 應用掛載並渲染
-  await page.waitForTimeout(2000);
+  await page.waitForTimeout(1000);
 
   // 使用文字選擇器而不是 data-test 屬性
   const buttonTexts = {
@@ -190,7 +205,8 @@ export async function navigateToMyMatches(page, tab: 'organizing' | 'participati
  */
 export async function getMyMatchesCount(page): Promise<number> {
   await page.goto('/my-matches');
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
+  await page.waitForTimeout(1000);
 
   const organizingButton = await page.getByRole('button', { name: '我開局的' });
   const organizingText = await organizingButton.textContent();
@@ -230,5 +246,6 @@ export async function expectPageTitle(page, expectedTitle: string) {
  */
 export async function navigateToProfile(page) {
   await page.goto('/profile');
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
+  await page.waitForTimeout(1000);
 }

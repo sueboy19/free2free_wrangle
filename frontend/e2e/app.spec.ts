@@ -181,7 +181,8 @@ test.describe('配對參與測試', () => {
 
     // 導航到配對詳情
     await page.goto(`/matches/${matchId}`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(1000);
 
     // 檢查是否顯示參與者管理區塊
     const participantSection = await page.getByRole('heading', { name: '參與者管理' });
@@ -309,7 +310,7 @@ test.describe('個人資料頁面測試', () => {
 
     // 檢查用戶名稱
     const userName = await page.getByRole('heading', { level: 2 }).first().textContent();
-    expect(userName).toContain('Test User');
+    expect(userName).toContain('測試用戶 A (開局者)');
 
     // 檢查登入方式
     const loginMethod = await page.getByText(/登入方式/).first();

@@ -37,7 +37,8 @@ const config: PlaywrightTestConfig = defineConfig({
   ],
 
   // 並行配置
-  workers: process.env.CI ? 1 : 2,
+  // 設為 1 避免並行測試共享資料庫時的衝突（如：同一配對不能同時被兩個用戶加入）
+  workers: 1,
 
   // 專案配置
   projects: [

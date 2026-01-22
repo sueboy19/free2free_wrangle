@@ -50,8 +50,19 @@ npm run dev
 npm run test
 
 # Frontend E2E 測試
-cd frontend/e2e && npx playwright test
+# 注意：運行 E2E 測試前需要先重置資料庫
+npm run db:reset
+
+cd frontend/e2e 
+npx playwright test --project-chromium
+npx playwright test --project-mobile
 ```
+
+**重要說明**：
+
+- ⚠️ **必須先執行 `npm run db:reset`**：E2E 測試會在資料庫中創建大量配對數據，重置可確保測試環境乾淨
+- 🔧 **並行測試已限制為 1**：避免桌面端和移動端測試同時運行時造成資料庫衝突（如同一配對不能同時被兩個用戶加入）
+- 📱 **兩套測試環境**：包含 chromium（桌面版）和 mobile（iPhone 13）兩種裝置的測試
 
 ## 開發環境
 
