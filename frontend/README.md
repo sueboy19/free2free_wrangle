@@ -256,11 +256,51 @@ npm run e2e:install
 
 ### 生產環境
 
-1. 設定正確的 `VITE_API_BASE_URL`
-2. 啟用 HTTPS
-3. 設定 CORS 政策
-4. 啟用 Gzip 壓縮
-5. 設定 CDN
+部署前需要配置生產環境變數：
+
+1. **設定 `.env.production` 文件**（已創建）：
+
+   ```env
+   VITE_API_BASE_URL=https://api.your-domain.com
+   VITE_ENABLE_MOCK_LOGIN=false
+   ```
+
+2. **構建生產版本**：
+
+   ```bash
+   cd frontend
+   npm run build
+   ```
+
+   Vite 會自動使用 `.env.production` 的配置
+
+3. **部署到 Cloudflare Pages**：
+   ```bash
+   cd ..
+   wrangler pages deploy frontend/dist --project-name=free2free
+   ```
+
+### 重要說明
+
+- ⚠️ **VITE_ENABLE_MOCK_LOGIN** 在生產環境必須設為 `false`
+- ⚠️ **VITE_API_BASE_URL** 必�改為生產 API 域名
+- 📝 `.env.production` 文件已在 `.gitignore` 中，請確保生產配置不提交到代碼庫
+
+### 部署檢查清單
+
+在部署前請確認：
+
+- [ ] 更新 `.env.production` 中的 `VITE_API_BASE_URL` 為生產 API 域名
+- [ ] 確認 `VITE_ENABLE_MOCK_LOGIN=false`
+- [ ] 本地測試構建：`npm run build && npm run preview`
+- [ ] 檢查構建產物：`ls -la dist/`
+
+### 其他優化
+
+1. 啟用 HTTPS
+2. 設定 CORS 政策
+3. 啟用 Gzip 壓縮
+4. 設定 CDN
 
 ### Docker 部署
 

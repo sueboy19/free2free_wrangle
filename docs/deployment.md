@@ -66,12 +66,69 @@ wrangler d1 execute free2free-db --file=./scripts/import-to-d1.sql
 
 ### 7. 部署应用
 
+#### 部署后端 API
+
 ```bash
 # 部署到 Cloudflare Workers
-wrangler deploy
+wrangler deploy --env production
 ```
 
+#### 部署前端
+
+**重要**：部署前必须先构建前端并配置生产环境变量。
+
+```bash
+# 1. 配置前端环境变量
+cd frontend
+cp .env.production.example .env.production
+# 编辑 .env.production，设置正确的 API 域名
+
+# 2. 构建生产版本
+npm run build
+
+# 3. 返回根目录
+cd ..
+
+# 4. 部署到 Cloudflare Pages
+wrangler pages deploy frontend/dist --project-name=free2free
+```
+
+**前端部署检查清单**：
+
+- [ ] `frontend/.env.production` 中 `VITE_API_BASE_URL` 已更新为生产 API 域名
+- [ ] `VITE_ENABLE_MOCK_LOGIN=false`
+- [ ] 本地测试构建：`npm run build && npm run preview`
+- [ ] Mock 登入按钮在生产环境中不显示
+
+详细的前端部署说明请参考：[frontend/README.md](../frontend/README.md)
+
 ### 8. 验证部署
+
+#### 后端验证
+
+```bash
+# 查看 worker 信息
+wrangler deployments list
+
+# 查看 worker 日志
+wrangler tail --env=production
+```
+
+#### 前端验证
+
+1. 访问前端网站
+2. 检查以下内容：
+   - [ ] Mock 登入按钮不显示
+   - [ ] 可以看到正常的登入按钮（Facebook/Instagram）
+   - [ ] API 请求指向正确的生产域名
+   - [ ] 浏览器控制台无错误
+
+#### 端到端验证
+
+1. 使用 Facebook/Instagram 登入
+2. 尝试创建配对
+3. 尝试加入配对
+4. 检查所有功能正常
 
 ```bash
 # 查看 worker 信息
@@ -83,20 +140,79 @@ wrangler tail
 
 ## 环境变量
 
-| 变量名称 | 说明 | 示例 |
-|-----------|--------|--------|
-| JWT_SECRET | JWT 加密密钥 | 至少 32 字符随机字符串 |
-| SESSION_KEY | Session 加密密钥 | 至少 32 字符随机字符串 |
-| FACEBOOK_KEY | Facebook App ID | 从 Facebook Developer 获取 |
-| FACEBOOK_SECRET | Facebook App Secret | 从 Facebook Developer 获取 |
-| INSTAGRAM_KEY | Instagram App ID | 从 Instagram Developer 获取 |
-| INSTAGRAM_SECRET | Instagram App Secret | 从 Instagram Developer 获取 |
-| ENVIRONMENT | 环境标识 | production |
-| CORS_ORIGINS | CORS 允许的来源 | https://free2free.example.com |
+### 后端环境变量
+
+| 变量名称         | 说明                 | 示例                          |
+| ---------------- | -------------------- | ----------------------------- |
+| JWT_SECRET       | JWT 加密密钥         | 至少 32 字符随机字符串        |
+| SESSION_KEY      | Session 加密密钥     | 至少 32 字符随机字符串        |
+| FACEBOOK_KEY     | Facebook App ID      | 从 Facebook Developer 获取    |
+| FACEBOOK_SECRET  | Facebook App Secret  | 从 Facebook Developer 获取    |
+| INSTAGRAM_KEY    | Instagram App ID     | 从 Instagram Developer 获取   |
+| INSTAGRAM_SECRET | Instagram App Secret | 从 Instagram Developer 获取   |
+| ENVIRONMENT      | 环境标识             | production                    |
+| CORS_ORIGINS     | CORS 允许的来源      | https://free2free.example.com |
+
+### 前端环境变量
+
+在部署前，需要配置 `frontend/.env.production`：
+
+```env
+# API 基礎URL - 生產環境（必須更新為實際域名）
+VITE_API_BASE_URL=https://api.your-domain.com
+
+# 應用配置
+VITE_APP_TITLE=買一送一配對網站
+VITE_APP_VERSION=1.0.0
+
+# 是否啟用 Mock 登入（生產環境必須關閉）
+VITE_ENABLE_MOCK_LOGIN=false
+```
+
+**配置步骤**：
+
+```bash
+cd frontend
+cp .env.production.example .env.production
+# 编辑 .env.production，更新 VITE_API_BASE_URL
+```
 
 ## 故障排除
 
-### 部署失败
+### 前端问题
+
+#### Mock 登入仍然显示在生产环境
+
+**原因**：构建时使用了错误的环境变量
+
+**解决方案**：
+
+1. 确认 `frontend/.env.production` 中 `VITE_ENABLE_MOCK_LOGIN=false`
+2. 删除 `frontend/dist` 并重新构建：
+   ```bash
+   cd frontend
+   rm -rf dist
+   npm run build
+   ```
+3. 确认构建时使用的是 production 模式（Vite 会自动使用 `.env.production`）
+
+#### API 请求失败
+
+**原因**：CORS 配置问题或域名错误
+
+**解决方案**：
+
+1. 检查 `VITE_API_BASE_URL` 是否正确
+2. 确认后端 `CORS_ORIGINS` 包含前端域名：
+   ```bash
+   wrangler secret put CORS_ORIGINS --env production
+   # 输入：https://your-frontend-domain.com
+   ```
+3. 检查浏览器网络请求的具体错误
+
+### 后端问题
+
+#### 部署失败
 
 1. 检查 wrangler.toml 配置
 2. 确认 Cloudflare 账户已登录

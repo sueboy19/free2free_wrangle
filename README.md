@@ -253,6 +253,30 @@ wrangler deploy --env production
 wrangler pages deploy frontend/dist --project-name=free2free
 ```
 
+**重要**：部署前需要先配置生產環境：
+
+1. 更新 `frontend/.env.production`：
+
+   ```env
+   VITE_API_BASE_URL=https://api.your-domain.com
+   VITE_ENABLE_MOCK_LOGIN=false
+   ```
+
+2. 構建前端：
+
+   ```bash
+   cd frontend
+   npm run build
+   cd ..
+   ```
+
+3. 部署：
+   ```bash
+   wrangler pages deploy frontend/dist --project-name=free2free
+   ```
+
+詳細說明請參考：[frontend/README.md](./frontend/README.md)
+
 ### 環境對比表
 
 | 項目             | 本地開發                | Staging                             | Production                             |
