@@ -11,6 +11,8 @@
     "test:integration": "vitest --run test/integration",
     "test:e2e": "vitest --run test/e2e",
     "test:coverage": "vitest --coverage",
+    "db:reset": "tsx scripts/clean-database.ts local",
+    "db:reset:remote": "tsx scripts/clean-database.ts remote",
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint src --ext .ts --fix",
     "format": "prettier --write \"src/**/*.ts\"",
@@ -31,6 +33,7 @@
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.5",
     "prettier": "^3.7.4",
+    "tsx": "^4.19.2",
     "typescript": "^5.9.3",
     "vitest": "^3.0.0",
     "wrangler": "^4.59.2"

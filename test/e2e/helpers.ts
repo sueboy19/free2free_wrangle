@@ -10,27 +10,33 @@ import type { Env } from '../../src/types';
 
 /**
  * 測試用戶定義
+ *
+ * ⚠️ 重要：這些 social_id 必須與 reset-test-data.sql 中的用戶一致
+ *
+ * - test_user_1: 測試用戶 A (開局者)
+ * - test_user_2: 測試用戶 B (參與者)
+ * - test_user_3: 測試用戶 C (額外參與者)
  */
 export const TEST_USERS = {
   organizer: {
-    id: 'test_organizer_1',
-    name: '測試開局者 A',
-    email: 'test_organizer_1@example.com',
+    id: 'test_user_1',
+    name: '測試用戶 A (開局者)',
+    email: 'test_user_1@example.com',
   },
   participant1: {
-    id: 'test_participant_1',
-    name: '測試參與者 B',
-    email: 'test_participant_1@example.com',
+    id: 'test_user_2',
+    name: '測試用戶 B (參與者)',
+    email: 'test_user_2@example.com',
   },
   participant2: {
-    id: 'test_participant_2',
-    name: '測試參與者 C',
-    email: 'test_participant_2@example.com',
+    id: 'test_user_3',
+    name: '測試用戶 C',
+    email: 'test_user_3@example.com',
   },
   participant3: {
-    id: 'test_participant_3',
-    name: '測試參與者 D',
-    email: 'test_participant_3@example.com',
+    id: 'test_user_4',
+    name: '測試用戶 D',
+    email: 'test_user_4@example.com',
   },
   nonParticipant: {
     id: 'test_non_participant_1',
@@ -322,23 +328,31 @@ export async function createReview(
 
 /**
  * 設置測試數據
+ *
+ * ⚠️ 注意：cleanup 功能已被移除，因為存在生產環境風險。
+ *
+ * 請改用 CLI 工具來清理和重置測試資料：
+ *   npx tsx scripts/clean-database.ts local
+ *
+ * 或直接執行 SQL 腳本：
+ *   wrangler d1 execute DB --local --file=./scripts/reset-test-data.sql
  */
 export const setupTestData = {
   /**
-   * 清理測試數據
+   * 清理測試數據（已棄用）
+   *
+   * ⚠️ 請改用 CLI 工具：npx tsx scripts/clean-database.ts
    */
   async cleanMatchData(matchId: number) {
-    await fetch(`${BASE_URL}/test/cleanup/match/${matchId}`, {
-      method: 'DELETE',
-    });
+    console.warn(`⚠️ cleanMatchData 已棄用。請改用 CLI：npx tsx scripts/clean-database.ts local`);
   },
 
   /**
-   * 清理測試用戶
+   * 清理測試用戶（已棄用）
+   *
+   * ⚠️ 請改用 CLI 工具：npx tsx scripts/clean-database.ts
    */
   async cleanUser(socialId: string) {
-    await fetch(`${BASE_URL}/test/cleanup/user/${socialId}`, {
-      method: 'DELETE',
-    });
+    console.warn(`⚠️ cleanUser 已棄用。請改用 CLI：npx tsx scripts/clean-database.ts local`);
   },
 };

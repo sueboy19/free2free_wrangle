@@ -6,46 +6,73 @@
 
 ## 測試文件
 
-| 文件 | 說明                        | 測試數量                                        |
-| ---- | --------------------------- | ----------------------------------------------- | --- |
-|      | `helpers.ts`                | 測試輔助函數（mock 登入、API 請求包裝等）       | -   |
-|      | `test-flow.test.ts`         | 配對完整流程測試（vitest）                      | 1   |
-|      | `concurrent-join.test.ts`   | 競態條件 - 並發參與測試                         | 3   |
-|      | `capacity-check.test.ts`    | 配對容量驗證測試（驗證當前無容量限制的行為）    | 4   |
-|      | `review-validation.test.ts` | 審核驗證測試                                    | 8   |
-|      | `review-permission.test.ts` | 評分權限驗證測試                                | 10  |
-|      | `init-test-data.ts`         | 初始化測試資料（插入測試 location 和 activity） | -   |
-|      | `import-to-d1.sql`          | SQL 測試資料匯入腳本                            | -   |
+| 文件                        | 說明                                         | 測試數量 |
+| --------------------------- | -------------------------------------------- | -------- |
+| `helpers.ts`                | 測試輔助函數（mock 登入、API 請求包裝等）    | -        |
+| `test-flow.test.ts`         | 配對完整流程測試（vitest）                   | 1        |
+| `concurrent-join.test.ts`   | 競態條件 - 並發參與測試                      | 3        |
+| `capacity-check.test.ts`    | 配對容量驗證測試（驗證當前無容量限制的行為） | 4        |
+| `review-validation.test.ts` | 審核驗證測試                                 | 8        |
+| `review-permission.test.ts` | 評分權限驗證測試                             | 10       |
 
 ## 如何運行測試
 
-### 方法 1：使用 vitest
+### 步驟 1：重置測試資料庫
 
-運行所有 E2E 測試：
+在運行測試之前，請先重置資料庫以確保測試環境乾淨：
+
+```bash
+# 清理並重置本地資料庫（推薦）
+npm run db:reset
+
+# 清理並重置遠程資料庫（需要輸入 "YES" 確認）
+npm run db:reset:remote
+```
+
+詳細的測試資料管理方案請參考：[docs/TEST_DATA_MANAGEMENT.md](../docs/TEST_DATA_MANAGEMENT.md)
+
+### 步驟 2：運行測試
+
+#### 後端 E2E 測試（Vitest）
+
+運行所有後端 E2E 測試：
 
 ```bash
 npm run test:e2e
 ```
 
-```bash
-cd frontend/e2e && npx playwright test --project=chromium 
+#### Frontend E2E 測試（Playwright）
 
-cd frontend/e2e && npx playwright test --project=mobile
+運行所有 Frontend E2E 測試：
+
+```bash
+cd frontend/e2e && npx playwright test
 ```
 
+運行特定測試環境：
+
 ```bash
+# 僅運行桌面版測試（Chromium）
+cd frontend/e2e && npx playwright test --project=chromium
+
+# 僅運行移動版測試
+cd frontend/e2e && npx playwright test --project=mobile
+
+# 運行特定測試
 cd frontend/e2e && npx playwright test --project=chromium -g "用戶B 可以申請加入配對"
 ```
 
-這會運行以下測試：
+npm run db:reset
 
-- 配對完整流程測試（`test-flow.test.ts`）
-- 競態條件測試（`concurrent-join.test.ts`）
-- 配對容量驗證測試（`capacity-check.test.ts`）
-- 審核驗證測試（`review-validation.test.ts`）
-- 評分權限驗證測試（`review-permission.test.ts`）
+```
 
-**注意**：當前測試使用 `app.request()` 直接調用 Worker，符合 vitest-pool-workers 的架構。
+清理並重置遠程資料庫
+
+```
+
+npm run db:reset:remote
+
+````
 
 ## 測試結果說明
 
@@ -129,7 +156,7 @@ cd frontend/e2e && npx playwright test --project=chromium -g "用戶B 可以申�
 it('should do something', async ({ env }) => {
   // 使用 env 參數
 });
-```
+````
 
 而不是：
 
@@ -149,7 +176,22 @@ it('should do something', async () => {
 2. 實施容量檢查邏輯
 3. 添加更多邊緣情況測試
 4. 添加性能測試
-5. 添加數據清理腳本以確保測試隔離
+5. 添加測試隔離機制（每個測試前自動清理資料）
+
+## 測試輔助函數
+
+`helpers.ts` 提供了以下函數：
+
+- `mockLogin()` - Mock 登入獲取 token（使用標準化測試用戶）
+- `createMatch()` - 創建配對
+- `joinMatch()` - 申請加入配對
+- `concurrentJoin()` - 並發參與配對（用於競態條件測試）
+- `reviewParticipant()` - 審核參與者
+- `closeMatch()` - 關閉配對
+- `createReview()` - 創建評分
+- `setupTestData` - 清理測試數據（已棄用，請使用 CLI 腳本）
+
+**注意：** `setupTestData` 的 cleanup 功能已棄用，請改用 `npm run db:reset`
 
 ## 參考資料
 
@@ -157,3 +199,4 @@ it('should do something', async () => {
 - [@cloudflare/vitest-pool-workers 文檔](https://github.com/cloudflare/vitest-pool-workers)
 - [Hono 測試文檔](https://hono.dev/docs/testing/)
 - [OPTIMIZATION_REPORT.md](../../OPTIMIZATION_REPORT.md)
+- [TEST_DATA_MANAGEMENT.md](../../docs/TEST_DATA_MANAGEMENT.md) - 測試資料管理方案
