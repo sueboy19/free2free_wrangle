@@ -367,7 +367,12 @@ npm run db:reset:remote
 wrangler d1 execute DB --local --file=./scripts/reset-test-data.sql
 
 # 清理並重置遠程資料庫（⚠️ 請謹慎使用！）
+# 這無法執行
 wrangler d1 execute free2free-db --remote --file=./scripts/reset-test-data.sql
+
+# 這行才行
+# 才會使用 [env.production]
+wrangler d1 execute DB --env production --remote --file=./scripts/reset-test-data.sql
 ```
 
 #### 測試用戶說明
@@ -411,7 +416,12 @@ wrangler d1 execute DB --local --command="..."
 wrangler d1 execute free2free-db-staging --remote --command="..."
 
 # Production
+# 這無法執行
 wrangler d1 execute free2free-db --remote --command="..."
+
+# 這行才行
+# 才會使用 [env.production]
+wrangler d1 execute DB --env production --remote --command="..."
 ```
 
 詳細說明請參考：[TEST_DATA_MANAGEMENT.md](./docs/TEST_DATA_MANAGEMENT.md)
