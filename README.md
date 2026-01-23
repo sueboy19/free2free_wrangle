@@ -60,48 +60,6 @@ npm run test:e2e
 npm run test:coverage
 ```
 
-#### Frontend E2E 測試（使用 Playwright）
-
-**重要說明**：
-
-- ✅ **自動執行 db:reset**：e2e 腳本會自動重置測試資料庫，確保測試環境乾淨
-- 🚫 **chromium 和 mobile 必須分開執行**：同時執行會導致測試超時（timeout）
-- 📱 **兩套測試環境**：包含 chromium（桌面版）和 mobile（iPhone 13）兩種裝置的測試
-
-**從根目錄一鍵執行（推薦）**：
-
-```bash
-# 運行桌面版測試（Chromium）
-npm run e2e -- --project=chromium
-
-# 運行移動版測試（Mobile）
-npm run e2e -- --project=mobile
-```
-
-**其他執行方式**：
-
-```bash
-# 有視窗執行
-npm run e2e:headed -- --project=chromium
-
-# 調試模式
-npm run e2e:debug -- --project=chromium
-
-# UI 模式（交互式）
-npm run e2e:ui
-
-# 查看測試報告
-npm run e2e:report
-
-# 安裝 Playwright 瀏覽器
-npm run e2e:install
-```
-
-**注意**：
-
-- `npm run e2e`、`e2e:headed`、`e2e:debug` 都會自動執行 `db:reset`
-- 可以通過 `--` 後的參數傳遞給 Playwright，例如 `--project=chromium` 或 `-g "測試名稱"`
-
 ## 開發環境
 
 ### 前置要求
@@ -128,12 +86,6 @@ npm run test
 
 # 運行 lint
 npm run lint
-
-# 清理並重置測試資料庫（本地）
-npm run db:reset
-
-# 清理並重置測試資料庫（遠程，需要確認）
-npm run db:reset:remote
 ```
 
 ### 前端開發
@@ -168,16 +120,6 @@ wrangler pages dev ../frontend/dist --port=3000
 binding = "DB"
 database_name = "free2free-db"
 database_id = "local-dev-placeholder"  # 任意值均可
-```
-
-**常用指令**：
-
-```bash
-# 執行本地資料庫 migration
-wrangler d1 execute DB --local --file=./migrations/0001_initial.sql
-
-# 查詢本地資料庫
-wrangler d1 execute DB --local --command="SELECT * FROM users LIMIT 10;"
 ```
 
 ### Staging 環境
@@ -336,6 +278,8 @@ wrangler d1 execute free2free-db-staging --remote --file=./migrations/0001_initi
 
 ```bash
 wrangler d1 execute free2free-db --remote --file=./migrations/0001_initial.sql
+
+wrangler d1 execute DB --env production --remote --file=./migrations/0001_initial.sql
 ```
 
 ### 重置測試資料
@@ -359,21 +303,6 @@ npm run db:reset:remote
 - ✅ 插入標準化的測試資料
 - ✅ 本地環境直接執行
 - ✅ 遠程環境需要交互式確認
-
-#### 直接執行 SQL 腳本
-
-```bash
-# 清理並重置本地資料庫
-wrangler d1 execute DB --local --file=./scripts/reset-test-data.sql
-
-# 清理並重置遠程資料庫（⚠️ 請謹慎使用！）
-# 這無法執行
-wrangler d1 execute free2free-db --remote --file=./scripts/reset-test-data.sql
-
-# 這行才行
-# 才會使用 [env.production]
-wrangler d1 execute DB --env production --remote --file=./scripts/reset-test-data.sql
-```
 
 #### 測試用戶說明
 
@@ -519,12 +448,45 @@ npm run test:e2e
 
 使用 Playwright 進行前端 E2E 測試。
 
-**運行測試**：
+**重要說明**：
+
+- ✅ **自動執行 db:reset**：e2e 腳本會自動重置測試資料庫，確保測試環境乾淨
+- 🚫 **chromium 和 mobile 必須分開執行**：同時執行會導致測試超時（timeout）
+- 📱 **兩套測試環境**：包含 chromium（桌面版）和 mobile（iPhone 13）兩種裝置的測試
+
+**從根目錄一鍵執行（推薦）**：
 
 ```bash
-# 運行 Frontend E2E 測試
-cd frontend/e2e && npm test
+# 運行桌面版測試（Chromium）
+npm run e2e -- --project=chromium
+
+# 運行移動版測試（Mobile）
+npm run e2e -- --project=mobile
 ```
+
+**其他執行方式**：
+
+```bash
+# 有視窗執行
+npm run e2e:headed -- --project=chromium
+
+# 調試模式
+npm run e2e:debug -- --project=chromium
+
+# UI 模式（交互式）
+npm run e2e:ui
+
+# 查看測試報告
+npm run e2e:report
+
+# 安裝 Playwright 瀏覽器
+npm run e2e:install
+```
+
+**注意**：
+
+- `npm run e2e`、`e2e:headed`、`e2e:debug` 都會自動執行 `db:reset`
+- 可以通過 `--` 後的參數傳遞給 Playwright，例如 `--project=chromium` 或 `-g "測試名稱"`
 
 快速開始請參考：[frontend/e2e/QUICKSTART.md](./frontend/e2e/QUICKSTART.md)
 
@@ -535,16 +497,6 @@ cd frontend/e2e && npm test
 ## 測試資料管理
 
 詳細的測試資料管理方案請參考：[TEST_DATA_MANAGEMENT.md](./docs/TEST_DATA_MANAGEMENT.md)
-
-**快速命令**：
-
-```bash
-# 清理並重置本地資料庫
-npm run db:reset
-
-# 清理並重置遠程資料庫（需要確認）
-npm run db:reset:remote
-```
 
 ## 遷移進度
 
