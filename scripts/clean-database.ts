@@ -14,6 +14,7 @@ import { execSync } from 'child_process';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, resolve } from 'path';
+import readline from 'readline';
 
 // ES modules: get __dirname equivalent
 const __filename = fileURLToPath(import.meta.url);
@@ -39,7 +40,6 @@ if (env === 'remote') {
   console.log('   - 任意其他鍵取消');
   console.log('');
 
-  const readline = require('readline');
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
@@ -76,16 +76,17 @@ function executeCleanup(environment: string) {
     console.log('');
 
     // 構建 wrangler 命令
-    const dbBinding = environment === 'local' ? 'DB' : 'free2free-db';
+    const dbBinding = 'DB';
+    const envFlag = environment === 'remote' ? '--env production' : '';
     const localFlag = environment === 'local' ? '--local' : '--remote';
 
     console.log('⏳ 執行資料庫清理...');
     console.log(`   環境：${environment}`);
-    console.log(`   資料庫：${dbBinding}`);
+    console.log(`   Binding：${dbBinding}`);
     console.log('');
 
     // 執行 wrangler 命令
-    const command = `wrangler d1 execute ${dbBinding} ${localFlag} --file=${sqlPath}`;
+    const command = `wrangler d1 execute ${dbBinding} ${localFlag} ${envFlag} --file=${sqlPath}`;
 
     execSync(command, {
       stdio: 'inherit',
