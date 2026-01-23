@@ -206,7 +206,8 @@ wrangler d1 execute free2free-db --remote --file=./migrations/0001_initial.sql
 wrangler deploy --env production
 
 # 部署 Frontend
-wrangler pages deploy frontend/dist --project-name=free2free
+cd frontend
+wrangler pages deploy dist --project-name=free2free --branch=master
 ```
 
 **重要**：部署前需要先配置生產環境：
