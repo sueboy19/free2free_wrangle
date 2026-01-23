@@ -31,19 +31,26 @@ INSTAGRAM_KEY=your_local_instagram_app_key
 INSTAGRAM_SECRET=your_local_instagram_app_secret
 ```
 
-### 3. 重置測試資料庫
+### 3. 初始化資料庫
+
+```bash
+# 執行資料庫 migration，建立資料表
+wrangler d1 execute DB --local --file=./migrations/0001_initial.sql
+```
+
+### 4. 重置測試資料庫
 
 ```bash
 npm run db:reset
 ```
 
-### 4. 啟動開發伺服器
+### 5. 啟動開發伺服器
 
 ```bash
 npm run dev
 ```
 
-### 5. 運行測試
+### 6. 運行測試
 
 #### 後端測試
 
@@ -91,9 +98,16 @@ npm run lint
 ### 前端開發
 
 ```bash
-# 啟動前端開發伺服器
-wrangler pages dev ../frontend/dist --port=3000
+# 切換到前端目錄
+cd frontend
+
+# 啟動前端開發伺服器（使用 Vite 熱重載）
+npm run dev
 ```
+
+前端應用將在 http://localhost:3000 運行。
+
+詳細說明請參考：[frontend/README.md](./frontend/README.md)
 
 ## 環境配置
 
