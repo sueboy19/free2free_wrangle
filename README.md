@@ -36,6 +36,12 @@ INSTAGRAM_SECRET=your_local_instagram_app_secret
 ```bash
 # 執行資料庫 migration，建立資料表
 wrangler d1 execute DB --local --file=./migrations/0001_initial.sql
+
+# 執行 OAuth codes migration（短期認證碼機制）
+wrangler d1 execute DB --local --file=./migrations/0002_add_oauth_codes.sql
+
+# 驗證資料表
+wrangler d1 execute DB --local --command="SELECT name FROM sqlite_master WHERE type='table';"
 ```
 
 ### 4. 重置測試資料庫
@@ -268,7 +274,7 @@ wrangler pages deploy dist --project-name=free2free --branch=master
 
 - [ ] 所有測試已通過（`npm run test`）
 - [ ] 資料庫遷移已在 staging 測試過
-- [ ] **執行 `oauth_codes` migration** (`0002_add_oauth_codes.sql`)
+- [ ] **執行 OAuth codes migration** (`0002_add_oauth_codes.sql`)
 - [ ] production 的 secrets 已設定
 - [ ] CORS_ORIGINS 已更新為生產域名
 - [ ] 檢查 wrangler.toml 中的生產環境設定
@@ -292,9 +298,6 @@ wrangler d1 execute DB --env production --remote --file=./migrations/0002_add_oa
 ```bash
 # 初始化資料庫
 wrangler d1 execute DB --local --file=./migrations/0001_initial.sql
-
-# OAuth code 表（短期認證碼機制）
-wrangler d1 execute DB --local --file=./migrations/0002_add_oauth_codes.sql
 
 # 驗證資料表
 wrangler d1 execute DB --local --command="SELECT name FROM sqlite_master WHERE type='table';"
@@ -368,6 +371,27 @@ npm run db:reset:remote
 - `sessions` - Session 資料
 - `oauth_codes` - OAuth 短期認證碼（用於 redirect 方式登入）
 
+**oauth_codes** 表結構：
+
+```sql
+CREATE TABLE oauth_codes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  code TEXT NOT NULL UNIQUE,
+  user_id INTEGER NOT NULL,
+  access_token TEXT NOT NULL,
+  refresh_token TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
+```
+
+**特性**：
+
+- Code 僅 5 分鐘有效
+- 為一次性使用，用完即刪除
+- 避免暴露 JWT token 在 URL 中
+
 ### 資料庫操作
 
 ```bash
@@ -392,7 +416,7 @@ wrangler d1 execute DB --env production --remote --command="..."
 
 ### OAuth 登入流程（Redirect 方式 - 支援手機和桌面）
 
-本專案使用 **redirect + 短期 code** 方式實作 OAuth 登入，解決手機端 popup 被阻擋的問題，同時確保資料安全。
+本專案使用 **redirect + 短期 code + API 交換** 方式實作 OAuth 登入，解決手機端 popup 被阻擋的問題，同時確保資料安全。
 
 #### 完整流程
 
@@ -412,7 +436,7 @@ wrangler d1 execute DB --env production --remote --command="..."
 ┌─────────────────────────────────┐
 │  後端                            │
 │  GET /auth/:provider            │
-│  - 生成 state (含前端回調 URL)   │
+│  - 生成短期 code                │
 │  - 重定向到 Facebook/Instagram   │
 └────┬────────────────────────────┘
      │ 3. redirect 到 OAuth provider
@@ -429,16 +453,17 @@ wrangler d1 execute DB --env production --remote --command="..."
 │  - 用 code 換取 access token            │
 │  - 獲取用戶資料                        │
 │  - 生成 JWT tokens                     │
-│  - 儲存到 oauth_codes 表 (5分鐘過期)   │
-│  - 重定向到前端 /auth/callback#code=... │
+│  - 建立 session                        │
+│  - 生成短期認證碼 (5分鐘過期)         │
+│  - 重定向到前端 /auth/callback?code=...  │
 └────┬────────────────────────────────────┘
-     │ 5. redirect 到前端
+     │ 5. redirect 到前端 (帶 code)
      ▼
 ┌─────────────────────────────────┐
 │  前端                            │
-│  /auth/callback (AuthCallback)  │
-│  - 從 URL hash 解析 code         │
-│  - 調用 /auth/exchange-code      │
+│  /auth/callback?code=...      │
+│  - 從 URL query 讀取 code      │
+│  - 調用 /auth/exchange-code API │
 └────┬────────────────────────────┘
      │ 6. POST exchange code
      ▼
@@ -446,15 +471,15 @@ wrangler d1 execute DB --env production --remote --command="..."
 │  後端                            │
 │  POST /auth/exchange-code        │
 │  - 驗證 code 是否有效            │
-│  - 返回 token 和 user 資料      │
+│  - 返回 JWT token 和 user 資料   │
 │  - 刪除已使用的 code (一次性)    │
 └────┬────────────────────────────┘
      │ 7. 返回 tokens
      ▼
 ┌──────────────────────┐
 │  前端                │
-│  - 儲存 token        │
-│  - 更新 AuthStore    │
+│  - 設置 localStorage  │
+│  - 設置 AuthStore    │
 │  - 跳轉首頁         │
 └──────────────────────┘
 ```
@@ -489,7 +514,7 @@ GET /auth/:provider/callback?code=...&state=...
 
 回應：
 
-- 重定向到前端 `/auth/callback#code=<短期認證碼>`
+- 重定向到前端 `/auth/callback?code=<短期認證碼>`
 
 **3. 用 Code 換取 Token**
 
@@ -520,7 +545,7 @@ Content-Type: application/json
 }
 ```
 
-**4. 刷新 Token**
+**3. 刷新 Token**
 
 ```
 POST /auth/refresh
@@ -529,7 +554,7 @@ POST /auth/refresh
 }
 ```
 
-**5. 登出**
+**4. 登出**
 
 ```
 POST /auth/logout
@@ -539,35 +564,12 @@ POST /auth/logout
 }
 ```
 
-#### 資料表結構
-
-**oauth_codes** - 短期認證碼表
-
-```sql
-CREATE TABLE oauth_codes (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  code TEXT NOT NULL UNIQUE,
-  user_id INTEGER NOT NULL,
-  access_token TEXT NOT NULL,
-  refresh_token TEXT NOT NULL,
-  expires_at TEXT NOT NULL,
-  created_at TEXT NOT NULL,
-  FOREIGN KEY (user_id) REFERENCES users(id)
-);
-```
-
-**特性**：
-
-- Code 僅 5 分鐘有效
-- 為一次性使用，用完即刪除
-- 避免暴露 JWT token 在 URL 中
-
 #### 資料安全考量
 
 | 方案                              | 優點                                                                                                      | 缺點                                                                              |
 | --------------------------------- | --------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
 | **舊方案** - Popup + postMessage  | 桌面體驗好                                                                                                | ❌ 手機端 popup 被阻擋<br>❌ `window.opener` 在手機可能為 null<br>❌ 跨域限制嚴格 |
-| **新方案** - Redirect + 短期 Code | ✅ 手機桌面都通用<br>✅ 無 popup 限制<br>✅ Token 不暴露在 URL<br>✅ Code 一次性使用<br>✅ 5 分鐘短期有效 | 頁面會重新載入                                                                    |
+| **新方案** - Redirect + 短期 Code | ✅ 手機桌面都通用<br>✅ 無 popup 限制<br>✅ Token 不暴露在 URL<br>✅ Code 一次性使用<br>✅ 5 分鐘短期有效 | 多一個 API 請求                                                                   |
 
 #### 前端實作說明
 
@@ -579,14 +581,32 @@ const login = async (provider: 'facebook' | 'instagram') => {
   const authUrl = `${baseUrl}/auth/${provider}?redirect_uri=${frontendCallbackUrl}`;
   window.location.href = authUrl;
 };
+
+// 恢復會話（從 localStorage）
+const restoreSession = () => {
+  const savedToken = localStorage.getItem('auth_token');
+  const savedUser = localStorage.getItem('user');
+
+  if (savedToken && savedUser) {
+    try {
+      token.value = savedToken;
+      user.value = JSON.parse(savedUser);
+      setAuthHeader();
+    } catch (error) {
+      console.error('恢復會話失敗:', error);
+      logout();
+    }
+  }
+};
 ```
 
 **Callback 處理 (`frontend/src/views/AuthCallback.vue`)**
 
 ```typescript
 onMounted(async () => {
-  // 從 URL hash 解析 code
-  const code = new URLSearchParams(window.location.hash.slice(1)).get('code');
+  // 從 URL query 參數讀取 code
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get('code');
 
   // 用 code 換取 token
   const response = await apiClient.post('/auth/exchange-code', { code });
@@ -598,6 +618,29 @@ onMounted(async () => {
 
   // 跳轉首頁
   router.push('/');
+});
+```
+
+**Callback 處理 (`frontend/src/views/AuthCallback.vue`)**
+
+```typescript
+onMounted(() => {
+  // 檢查是否已經設置了 token（由後端 callback HTML 設置）
+  const token = localStorage.getItem('auth_token');
+  const userStr = localStorage.getItem('user');
+
+  if (token && userStr) {
+    // 恢復 session
+    authStore.restoreSession();
+    toast.success('登入成功！');
+
+    // 跳轉首頁
+    window.location.href = '/';
+  } else {
+    // 如果沒有 token，可能用戶直接訪問了這個頁面
+    toast.warning('未找到登入資訊，請重新登入');
+    window.location.href = '/login';
+  }
 });
 ```
 
@@ -613,33 +656,137 @@ if (publicRoutes.includes(to.name as string)) {
 }
 ```
 
-### JWT Token
-
-- **Access Token**: 15 分鐘過期
-- **Refresh Token**: 7 天過期
-
-### 使用 Token
-
-在請求頭中添加 Authorization：
+┌──────────┐
+│ 用戶 │
+└────┬─────┘
+│ 1. 點擊登入
+▼
+┌──────────────────────┐
+│ 前端 │
+│ /login → AuthStore │
+│ login() 方法 │
+└────┬─────────────────┘
+│ 2. redirect 到後端
+▼
+┌─────────────────────────────────┐
+│ 後端 │
+│ GET /auth/:provider │
+│ - 生成 state (含前端回調 URL) │
+│ - 重定向到 Facebook/Instagram │
+└────┬────────────────────────────┘
+│ 3. redirect 到 OAuth provider
+▼
+┌─────────────────────┐
+│ Facebook/Instagram │
+│ 授權頁面 │
+└────┬────────────────┘
+│ 4. 用戶授權後 callback
+▼
+┌─────────────────────────────────────────┐
+│ 後端 │
+│ GET /auth/:provider/callback │
+│ - 用 code 換取 access token │
+│ - 獲取用戶資料 │
+│ - 生成 JWT tokens │
+│ - 儲存到 oauth_codes 表 (5分鐘過期) │
+│ - 重定向到前端 /auth/callback#code=... │
+└────┬────────────────────────────────────┘
+│ 5. redirect 到前端
+▼
+┌─────────────────────────────────┐
+│ 前端 │
+│ /auth/callback (AuthCallback) │
+│ - 從 URL hash 解析 code │
+│ - 調用 /auth/exchange-code │
+└────┬────────────────────────────┘
+│ 6. POST exchange code
+▼
+┌─────────────────────────────────┐
+│ 後端 │
+│ POST /auth/exchange-code │
+│ - 驗證 code 是否有效 │
+│ - 返回 token 和 user 資料 │
+│ - 刪除已使用的 code (一次性) │
+└────┬────────────────────────────┘
+│ 7. 返回 tokens
+▼
+┌──────────────────────┐
+│ 前端 │
+│ - 儲存 token │
+│ - 更新 AuthStore │
+│ - 跳轉首頁 │
+└──────────────────────┘
 
 ```
-Authorization: Bearer <access_token>
-```
 
-### JWT Token
+#### API 端點
 
-- **Access Token**: 15 分鐘過期
-- **Refresh Token**: 7 天過期
-
-### 使用 Token
-
-在請求頭中添加 Authorization：
+**1. 開始 OAuth 流程**
 
 ```
-Authorization: Bearer <access_token>
+
+GET /auth/:provider?redirect_uri=<前端回調URL>
+
 ```
 
-### 刷新 Token
+參數：
+
+- `provider`: `facebook` 或 `instagram`
+- `redirect_uri`: (可選) 前端回調 URL，預設為 `{origin}/auth/callback`
+
+回應：
+
+- 重定向到 OAuth provider 授權頁面
+
+**2. OAuth Provider Callback (僅供 OAuth provider 調用)**
+
+```
+
+GET /auth/:provider/callback?code=...&state=...
+
+```
+
+參數：
+
+- `code`: OAuth provider 授權碼
+- `state`: 包含前端回調 URL 的狀態參數
+
+回應：
+
+- 重定向到前端 `/auth/callback#code=<短期認證碼>`
+
+**3. 用 Code 換取 Token**
+
+```
+
+POST /auth/exchange-code
+Content-Type: application/json
+
+{
+"code": "<短期認證碼>"
+}
+
+````
+
+回應：
+
+```json
+{
+  "access_token": "<JWT access token>",
+  "refresh_token": "<JWT refresh token>",
+  "user": {
+    "id": 1,
+    "social_id": "facebook_user_id",
+    "social_provider": "facebook",
+    "name": "使用者名稱",
+    "email": "user@example.com",
+    "avatar_url": "https://...",
+    "is_admin": false
+  }
+}
+````
+
+**4. 刷新 Token**
 
 ```
 POST /auth/refresh
@@ -648,7 +795,7 @@ POST /auth/refresh
 }
 ```
 
-### 登出
+**5. 登出**
 
 ```
 POST /auth/logout

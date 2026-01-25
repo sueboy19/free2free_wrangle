@@ -20,13 +20,33 @@ export interface AuthResponse {
 }
 
 export const useAuthStore = defineStore('auth', () => {
-  const user = ref<User | null>(null);
-  const token = ref<string | null>(localStorage.getItem('auth_token'));
+  // 初始化時從 localStorage 讀取
+  const savedToken = localStorage.getItem('auth_token');
+  const savedUser = localStorage.getItem('user');
+
+  // 嘗試解析 user，如果失敗則設為 null
+  let parsedUser: User | null = null;
+  if (savedUser) {
+    try {
+      parsedUser = JSON.parse(savedUser);
+    } catch (e) {
+      console.error('Failed to parse user from localStorage:', e);
+      localStorage.removeItem('user'); // 清除無效數據
+    }
+  }
+
+  const user = ref<User | null>(parsedUser);
+  const token = ref<string | null>(savedToken);
   const toast = useToast();
 
   // 計算屬性
   const isAuthenticated = computed(() => !!token.value && !!user.value);
   const isAdmin = computed(() => user.value?.is_admin === true);
+
+  // 初始化時設置 API header
+  if (savedToken) {
+    apiClient.defaults.headers.common['Authorization'] = `Bearer ${savedToken}`;
+  }
 
   // 設置 API 預設標頭
   const setAuthHeader = () => {
@@ -35,7 +55,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
   };
 
-  // 設置會話（用於 OAuth callback）
+  // 設置會話（用於 OAuth callback - 實際上現在由後端 HTML 設置）
   const setSession = (userData: User, accessToken: string) => {
     user.value = userData;
     token.value = accessToken;

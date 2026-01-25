@@ -144,10 +144,11 @@ router.get('/auth/:provider/callback', async (c) => {
   const sessionManager = new SessionManager(c.env.DB);
   await sessionManager.createSession(user.id as number, { ...userData });
 
-  // Store token and user data in DB with short-lived code (5 minutes)
+  // 生成短期 code（5 分鐘），用於換取 token
   const authCode = crypto.randomUUID();
   const codeExpiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
 
+  // 儲存 code 對應的 token 和 user
   await c.env.DB.prepare(
     `INSERT INTO oauth_codes (code, user_id, access_token, refresh_token, expires_at, created_at)
      VALUES (?, ?, ?, ?, ?, datetime('now'))`
@@ -155,8 +156,8 @@ router.get('/auth/:provider/callback', async (c) => {
     .bind(authCode, user.id, tokens.access, tokens.refresh, codeExpiresAt)
     .run();
 
-  // Redirect to frontend with code only (not token)
-  const redirectUrl = `${frontendCallbackUrl}#code=${authCode}`;
+  // 重定向到前端 /auth/callback?code=...（用 query 參數而不是 hash）
+  const redirectUrl = `${frontendCallbackUrl}?code=${authCode}`;
 
   return c.redirect(redirectUrl, 302);
 });
@@ -241,6 +242,57 @@ router.post('/auth/logout', async (c) => {
   } catch {
     return c.json({ message: 'Logged out successfully' });
   }
+});
+
+// Exchange OAuth code for tokens
+router.post('/auth/exchange-code', async (c) => {
+  const body = await c.req.json();
+  const { code } = body;
+
+  if (!code) {
+    return c.json({ error: 'Code is required' }, 400);
+  }
+
+  // Get code from database
+  const codeRecord = await c.env.DB.prepare(
+    'SELECT * FROM oauth_codes WHERE code = ? AND expires_at > datetime("now")'
+  )
+    .bind(code)
+    .first();
+
+  if (!codeRecord) {
+    return c.json({ error: 'Invalid or expired code' }, 400);
+  }
+
+  // Get user data
+  const user = await c.env.DB.prepare('SELECT * FROM users WHERE id = ?')
+    .bind(codeRecord.user_id)
+    .first();
+
+  if (!user) {
+    return c.json({ error: 'User not found' }, 404);
+  }
+
+  const userData = {
+    id: user.id as number,
+    social_id: user.social_id as string,
+    social_provider: user.social_provider as 'facebook' | 'instagram',
+    name: user.name as string,
+    email: user.email as string,
+    avatar_url: user.avatar_url as string | undefined,
+    is_admin: (user.is_admin as unknown as number) === 1,
+    created_at: user.created_at as number,
+    updated_at: user.updated_at as number,
+  };
+
+  // Delete code (one-time use)
+  await c.env.DB.prepare('DELETE FROM oauth_codes WHERE code = ?').bind(code).run();
+
+  return c.json({
+    access_token: codeRecord.access_token,
+    refresh_token: codeRecord.refresh_token,
+    user: userData,
+  });
 });
 
 router.get('/auth/me', authMiddleware, async (c) => {
@@ -339,57 +391,6 @@ router.post('/auth/mock', async (c) => {
   } catch (error) {
     return c.json({ message: error instanceof Error ? error.message : 'Unknown error' }, 500);
   }
-});
-
-// Exchange OAuth code for token (used by frontend callback)
-router.post('/auth/exchange-code', async (c) => {
-  const body = await c.req.json();
-  const { code } = body;
-
-  if (!code) {
-    return c.json({ error: 'Code is required' }, 400);
-  }
-
-  // Get code from database
-  const codeRecord = await c.env.DB.prepare(
-    'SELECT * FROM oauth_codes WHERE code = ? AND expires_at > datetime("now")'
-  )
-    .bind(code)
-    .first();
-
-  if (!codeRecord) {
-    return c.json({ error: 'Invalid or expired code' }, 400);
-  }
-
-  // Get user data
-  const user = await c.env.DB.prepare('SELECT * FROM users WHERE id = ?')
-    .bind(codeRecord.user_id)
-    .first();
-
-  if (!user) {
-    return c.json({ error: 'User not found' }, 404);
-  }
-
-  const userData = {
-    id: user.id as number,
-    social_id: user.social_id as string,
-    social_provider: user.social_provider as 'facebook' | 'instagram',
-    name: user.name as string,
-    email: user.email as string,
-    avatar_url: user.avatar_url as string | undefined,
-    is_admin: (user.is_admin as unknown as number) === 1,
-    created_at: user.created_at as number,
-    updated_at: user.updated_at as number,
-  };
-
-  // Delete the code (one-time use)
-  await c.env.DB.prepare('DELETE FROM oauth_codes WHERE code = ?').bind(code).run();
-
-  return c.json({
-    access_token: codeRecord.access_token,
-    refresh_token: codeRecord.refresh_token,
-    user: userData,
-  });
 });
 
 export default router;

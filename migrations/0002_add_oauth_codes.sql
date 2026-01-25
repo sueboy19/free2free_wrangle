@@ -1,3 +1,4 @@
+-- oauth_codes 表 - 用於短期認證碼（OAuth redirect 方式）
 CREATE TABLE IF NOT EXISTS oauth_codes (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   code TEXT NOT NULL UNIQUE,

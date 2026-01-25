@@ -38,18 +38,6 @@ const routes = [
     meta: { title: '配對列表', requiresAuth: true },
   },
   {
-    path: '/login',
-    name: 'Login',
-    component: Login,
-    meta: { title: '登入' },
-  },
-  {
-    path: '/matches',
-    name: 'Matches',
-    component: Matches,
-    meta: { title: '配對列表', requiresAuth: true },
-  },
-  {
     path: '/matches/create',
     name: 'CreateMatch',
     component: CreateMatch,
