@@ -1,6 +1,6 @@
 export interface OAuthProvider {
   name: 'facebook' | 'instagram';
-  getAuthUrl(): string;
+  getAuthUrl(state?: string): string;
   exchangeCodeForToken(code: string): Promise<string>;
   getUserProfile(accessToken: string): Promise<OAuthProfile>;
 }
@@ -24,13 +24,13 @@ export class FacebookOAuthProvider implements OAuthProvider {
     this.redirectUri = redirectUri;
   }
 
-  getAuthUrl(): string {
+  getAuthUrl(state?: string): string {
     const params = new URLSearchParams({
       client_id: this.clientId,
       redirect_uri: this.redirectUri,
       scope: 'email,public_profile',
       response_type: 'code',
-      state: crypto.randomUUID(),
+      state: state || crypto.randomUUID(),
     });
     return `https://www.facebook.com/v18.0/dialog/oauth?${params}`;
   }
@@ -87,13 +87,13 @@ export class InstagramOAuthProvider implements OAuthProvider {
     this.redirectUri = redirectUri;
   }
 
-  getAuthUrl(): string {
+  getAuthUrl(state?: string): string {
     const params = new URLSearchParams({
       client_id: this.clientId,
       redirect_uri: this.redirectUri,
       scope: 'user_profile',
       response_type: 'code',
-      state: crypto.randomUUID(),
+      state: state || crypto.randomUUID(),
     });
     return `https://api.instagram.com/oauth/authorize?${params}`;
   }

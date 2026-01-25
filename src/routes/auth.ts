@@ -25,6 +25,11 @@ router.get('/auth/:provider', async (c) => {
     throw new Error('Invalid OAuth provider');
   }
 
+  // 獲取前端回調 URL（用於 OAuth 後 redirect 回前端）
+  const origin =
+    c.req.header('origin') || c.req.header('referer')?.split('/')[2] || 'http://localhost:3000';
+  const frontendCallbackUrl = c.req.query('redirect_uri') || `${origin}/auth/callback`;
+
   const redirectUri = `${c.env.BASE_URL}/auth/${provider}/callback`;
 
   let oauthProvider;
@@ -42,7 +47,9 @@ router.get('/auth/:provider', async (c) => {
     );
   }
 
-  const authUrl = oauthProvider.getAuthUrl();
+  // 將前端回調 URL 編碼到 state 參數中（用於 callback 時找回前端 URL）
+  const state = encodeURIComponent(frontendCallbackUrl);
+  const authUrl = oauthProvider.getAuthUrl(state);
 
   return c.redirect(authUrl, 302);
 });
@@ -50,9 +57,20 @@ router.get('/auth/:provider', async (c) => {
 router.get('/auth/:provider/callback', async (c) => {
   const provider = c.req.param('provider');
   const code = c.req.query('code');
+  const state = c.req.query('state');
 
   if (!code) {
     throw new Error('Authorization code is required');
+  }
+
+  // 從 state 中解析前端回調 URL
+  let frontendCallbackUrl = 'http://localhost:3000/auth/callback';
+  if (state) {
+    try {
+      frontendCallbackUrl = decodeURIComponent(state);
+    } catch (e) {
+      console.warn('Failed to decode state:', state);
+    }
   }
 
   const redirectUri = `${c.env.BASE_URL}/auth/${provider}/callback`;
@@ -126,50 +144,21 @@ router.get('/auth/:provider/callback', async (c) => {
   const sessionManager = new SessionManager(c.env.DB);
   await sessionManager.createSession(user.id as number, { ...userData });
 
-  // Return HTML page with postMessage like Go backend
-  const userJSON = JSON.stringify({
-    id: userData.id,
-    social_id: userData.social_id,
-    social_provider: userData.social_provider,
-    name: userData.name,
-    email: userData.email,
-    avatar_url: userData.avatar_url,
-    is_admin: userData.is_admin,
-    created_at: userData.created_at,
-    updated_at: userData.updated_at,
-  });
+  // Store token and user data in DB with short-lived code (5 minutes)
+  const authCode = crypto.randomUUID();
+  const codeExpiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
 
-  const html = `<!DOCTYPE html>
-<html>
-<head>
-  <title>${provider === 'facebook' ? 'Facebook' : 'Instagram'} 登入成功</title>
-  <script>
-    (function() {
-      var response = {
-        type: 'auth_success',
-        payload: {
-          user: ${userJSON},
-          token: "${tokens.access}"
-        }
-      };
+  await c.env.DB.prepare(
+    `INSERT INTO oauth_codes (code, user_id, access_token, refresh_token, expires_at, created_at)
+     VALUES (?, ?, ?, ?, ?, datetime('now'))`
+  )
+    .bind(authCode, user.id, tokens.access, tokens.refresh, codeExpiresAt)
+    .run();
 
-      if (window.opener) {
-        window.opener.postMessage(response, '*');
-      }
+  // Redirect to frontend with code only (not token)
+  const redirectUrl = `${frontendCallbackUrl}#code=${authCode}`;
 
-      setTimeout(function() {
-        window.close();
-      }, 1000);
-    })();
-  </script>
-</head>
-<body>
-  <p>登入成功，正在返回...</p>
-</body>
-</html>`;
-
-  c.header('Content-Type', 'text/html; charset=utf-8');
-  return c.body(html);
+  return c.redirect(redirectUrl, 302);
 });
 
 router.post('/auth/refresh', async (c) => {
@@ -350,6 +339,57 @@ router.post('/auth/mock', async (c) => {
   } catch (error) {
     return c.json({ message: error instanceof Error ? error.message : 'Unknown error' }, 500);
   }
+});
+
+// Exchange OAuth code for token (used by frontend callback)
+router.post('/auth/exchange-code', async (c) => {
+  const body = await c.req.json();
+  const { code } = body;
+
+  if (!code) {
+    return c.json({ error: 'Code is required' }, 400);
+  }
+
+  // Get code from database
+  const codeRecord = await c.env.DB.prepare(
+    'SELECT * FROM oauth_codes WHERE code = ? AND expires_at > datetime("now")'
+  )
+    .bind(code)
+    .first();
+
+  if (!codeRecord) {
+    return c.json({ error: 'Invalid or expired code' }, 400);
+  }
+
+  // Get user data
+  const user = await c.env.DB.prepare('SELECT * FROM users WHERE id = ?')
+    .bind(codeRecord.user_id)
+    .first();
+
+  if (!user) {
+    return c.json({ error: 'User not found' }, 404);
+  }
+
+  const userData = {
+    id: user.id as number,
+    social_id: user.social_id as string,
+    social_provider: user.social_provider as 'facebook' | 'instagram',
+    name: user.name as string,
+    email: user.email as string,
+    avatar_url: user.avatar_url as string | undefined,
+    is_admin: (user.is_admin as unknown as number) === 1,
+    created_at: user.created_at as number,
+    updated_at: user.updated_at as number,
+  };
+
+  // Delete the code (one-time use)
+  await c.env.DB.prepare('DELETE FROM oauth_codes WHERE code = ?').bind(code).run();
+
+  return c.json({
+    access_token: codeRecord.access_token,
+    refresh_token: codeRecord.refresh_token,
+    user: userData,
+  });
 });
 
 export default router;
