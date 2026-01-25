@@ -6,10 +6,32 @@
 
 ### 🔐 用戶認證
 
-- Facebook 登入
-- Instagram 登入
+- Facebook 登入（使用 redirect 方式，支援手機和桌面）
+- Instagram 登入（使用 redirect 方式，支援手機和桌面）
 - JWT Token 管理
 - 自動會話恢復
+
+**OAuth 登入流程說明**：
+
+本專案使用 **redirect + 短期 code** 方式實作 OAuth 登入，確保在移動設備上也能正常運作：
+
+1. 用戶點擊「Facebook/Instagram 登入」按鈕
+2. 前端重定向到後端 `/auth/:provider`
+3. 後端重定向到 OAuth provider（Facebook/Instagram）
+4. 用戶在 OAuth provider 頁面完成授權
+5. OAuth provider 回調後端 `/auth/:provider/callback`
+6. 後端生成短期認證碼（5 分鐘過期）並重定向到前端 `/auth/callback#code=...`
+7. 前端用 code 向後端換取實際的 JWT token
+8. 設置 token 並跳轉首頁
+
+**資料安全特性**：
+
+- Token 不暴露在 URL 中（使用短期 code 替代）
+- Code 僅 5 分鐘有效
+- Code 為一次性使用，用完即刪除
+- 同時支援手機和桌面瀏覽器
+
+詳細 API 文檔請參考專案根目錄的 [README.md](../README.md#認證)。
 
 ### 🎯 配對功能
 
@@ -64,6 +86,7 @@ frontend/
 │   ├── views/            # 頁面視圖
 │   │   ├── Home.vue         # 首頁
 │   │   ├── Login.vue        # 登入頁
+│   │   ├── AuthCallback.vue # OAuth 回調處理（系統使用）
 │   │   ├── Matches.vue      # 配對列表
 │   │   ├── CreateMatch.vue  # 創建配對
 │   │   ├── MyMatches.vue    # 我的配對
@@ -131,16 +154,19 @@ npm run preview
 
 ## 頁面路由
 
-| 路徑              | 頁面     | 需要登入 | 需要管理員 |
-| ----------------- | -------- | -------- | ---------- |
-| `/`               | 首頁     | ❌       | ❌         |
-| `/login`          | 登入頁   | ❌       | ❌         |
-| `/matches`        | 配對列表 | ✅       | ❌         |
-| `/matches/create` | 創建配對 | ✅       | ❌         |
-| `/matches/:id`    | 配對詳情 | ✅       | ❌         |
-| `/my-matches`     | 我的配對 | ✅       | ❌         |
-| `/profile`        | 個人資料 | ✅       | ❌         |
-| `/admin`          | 管理後台 | ✅       | ✅         |
+| 路徑              | 頁面       | 需要登入 | 需要管理員 | 說明                             |
+| ----------------- | ---------- | -------- | ---------- | -------------------------------- |
+| `/`               | 首頁       | ❌       | ❌         | 公開頁面                         |
+| `/login`          | 登入頁     | ❌       | ❌         | 公開頁面                         |
+| `/auth/callback`  | OAuth 回調 | ❌       | ❌         | **系統使用**：OAuth 認證回調處理 |
+| `/matches`        | 配對列表   | ✅       | ❌         | 需登入                           |
+| `/matches/create` | 創建配對   | ✅       | ❌         | 需登入                           |
+| `/matches/:id`    | 配對詳情   | ✅       | ❌         | 需登入                           |
+| `/my-matches`     | 我的配對   | ✅       | ❌         | 需登入                           |
+| `/profile`        | 個人資料   | ✅       | ❌         | 需登入                           |
+| `/admin`          | 管理後台   | ✅       | ✅         | 需登入 + 管理員                  |
+
+**注意**：`/auth/callback` 是 OAuth 登入流程中由後端回調使用的系統路由，用戶不會直接訪問此頁面。
 
 ## API 整合
 
@@ -171,8 +197,61 @@ npm run preview
 使用 Pinia 進行狀態管理，主要包含：
 
 - `useAuthStore` - 用戶認證狀態
+  - `login()` - 開始 OAuth 登入（使用 redirect 方式）
+  - `setSession()` - 設置會話（用於 OAuth callback）
+  - `logout()` - 登出
+  - `restoreSession()` - 恢復會話（從 localStorage）
 - API 調用和錯誤處理
 - 本地存儲管理
+
+### 路由守衛
+
+路由守衛會檢查是否需要登入或管理員權限。**重要**：為避免 OAuth callback 流程被干擾，以下路由被加入公開白名單：
+
+```typescript
+const publicRoutes = ['Home', 'Login', 'AuthCallback'];
+```
+
+### OAuth 登入實作
+
+**AuthStore (`src/stores/auth.ts`)**
+
+```typescript
+// 開始 OAuth 登入 - 重定向方式
+const login = async (provider: 'facebook' | 'instagram') => {
+  const authUrl = `${baseUrl}/auth/${provider}?redirect_uri=${frontendCallbackUrl}`;
+  window.location.href = authUrl;
+};
+
+// 設置會話 - 用於 OAuth callback
+const setSession = (userData: User, accessToken: string) => {
+  user.value = userData;
+  token.value = accessToken;
+  localStorage.setItem('auth_token', accessToken);
+  localStorage.setItem('user', JSON.stringify(userData));
+  setAuthHeader();
+};
+```
+
+**Callback 處理 (`src/views/AuthCallback.vue`)**
+
+```typescript
+onMounted(async () => {
+  // 從 URL hash 解析 code
+  const code = new URLSearchParams(window.location.hash.slice(1)).get('code');
+
+  // 用 code 換取 token
+  const response = await apiClient.post('/auth/exchange-code', { code });
+  const { access_token, refresh_token, user } = response.data;
+
+  // 設置 session
+  authStore.setSession(user, access_token);
+  localStorage.setItem('refresh_token', refresh_token);
+
+  // 跳轉首頁
+  router.push('/');
+});
+```
 
 ### 樣式系統
 
