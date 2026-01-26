@@ -5,7 +5,6 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "bash scripts/deploy.sh",
     "test": "vitest",
     "test:unit": "vitest --run test/unit",
     "test:integration": "vitest --run test/integration",
@@ -13,6 +12,9 @@
     "test:coverage": "vitest --coverage",
     "db:reset": "tsx scripts/clean-database.ts local",
     "db:reset:remote": "tsx scripts/clean-database.ts remote",
+    "cleanup:oauth:local": "node scripts/cleanup-oauth.js local",
+    "cleanup:oauth:staging": "node scripts/cleanup-oauth.js staging",
+    "cleanup:oauth:prod": "node scripts/cleanup-oauth.js production",
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint src --ext .ts --fix",
     "format": "prettier --write \"src/**/*.ts\"",

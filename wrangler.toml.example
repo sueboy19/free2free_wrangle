@@ -12,6 +12,7 @@ database_id = "xxxxxxxxxxxxxxxxxxxxxx"
 ENVIRONMENT = "development"
 CORS_ORIGINS = "http://localhost:3000,http://localhost:5173"
 BASE_URL = "https://localhost:3000"
+FRONTEND_URL = "http://localhost:3000"
 
 [env.staging]
 name = "free2free-api-staging"
@@ -20,6 +21,7 @@ name = "free2free-api-staging"
 ENVIRONMENT = "staging"
 CORS_ORIGINS = "https://ooxxooxx.api"
 BASE_URL = "https://ooxxooxx.web"
+FRONTEND_URL = "https://staging.ooxxooxx.com"
 
 [[env.staging.d1_databases]]
 binding = "DB"
@@ -33,6 +35,7 @@ name = "free2free-api-prod"
 ENVIRONMENT = "production"
 CORS_ORIGINS = "https://ooxxooxx.api"
 BASE_URL = "https://ooxxooxx.web"
+FRONTEND_URL = "https://ooxxooxx.com"
 
 [[env.production.d1_databases]]
 binding = "DB"

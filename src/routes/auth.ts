@@ -24,11 +24,9 @@ router.get('/auth/:provider', async (c) => {
   if (!['facebook', 'instagram'].includes(provider)) {
     throw new Error('Invalid OAuth provider');
   }
-
-  // 獲取前端回調 URL（用於 OAuth 後 redirect 回前端）
-  const origin =
-    c.req.header('origin') || c.req.header('referer')?.split('/')[2] || 'http://localhost:3000';
-  const frontendCallbackUrl = c.req.query('redirect_uri') || `${origin}/auth/callback`;
+  // 使用固定的前端回調 URL（從環境變量讀取，或使用默認值）
+  const frontendCallbackUrl =
+    `${c.env.FRONTEND_URL}/auth/callback` || 'http://localhost:3000/auth/callback';
 
   const redirectUri = `${c.env.BASE_URL}/auth/${provider}/callback`;
 
@@ -47,8 +45,17 @@ router.get('/auth/:provider', async (c) => {
     );
   }
 
-  // 將前端回調 URL 編碼到 state 參數中（用於 callback 時找回前端 URL）
-  const state = encodeURIComponent(frontendCallbackUrl);
+  // 生成隨機 state 並存儲到數據庫（防止 CSRF 攻擊）
+  const state = crypto.randomUUID();
+  const stateExpiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10分鐘過期
+
+  await c.env.DB.prepare(
+    `INSERT INTO oauth_states (state, expires_at, created_at)
+     VALUES (?, ?, datetime('now'))`
+  )
+    .bind(state, stateExpiresAt)
+    .run();
+
   const authUrl = oauthProvider.getAuthUrl(state);
 
   return c.redirect(authUrl, 302);
@@ -63,15 +70,27 @@ router.get('/auth/:provider/callback', async (c) => {
     throw new Error('Authorization code is required');
   }
 
-  // 從 state 中解析前端回調 URL
-  let frontendCallbackUrl = 'http://localhost:3000/auth/callback';
-  if (state) {
-    try {
-      frontendCallbackUrl = decodeURIComponent(state);
-    } catch (e) {
-      console.warn('Failed to decode state:', state);
-    }
+  if (!state) {
+    throw new Error('State parameter is required');
   }
+
+  // 驗證 state（防止 CSRF 攻擊）
+  const stateRecord = await c.env.DB.prepare(
+    'SELECT * FROM oauth_states WHERE state = ? AND expires_at > datetime("now")'
+  )
+    .bind(state)
+    .first();
+
+  if (!stateRecord) {
+    throw new Error('Invalid or expired state');
+  }
+
+  // 刪除已使用的 state（一次性使用）
+  await c.env.DB.prepare('DELETE FROM oauth_states WHERE state = ?').bind(state).run();
+
+  // 使用固定的前端回調 URL（從環境變量讀取）
+  const frontendCallbackUrl =
+    `${c.env.FRONTEND_URL}/auth/callback` || 'http://localhost:3000/auth/callback';
 
   const redirectUri = `${c.env.BASE_URL}/auth/${provider}/callback`;
 

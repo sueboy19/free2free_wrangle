@@ -91,15 +91,12 @@ export const useAuthStore = defineStore('auth', () => {
   // 登入方法 - 使用 redirect 方式（支援手機和桌面）
   const login = async (provider: 'facebook' | 'instagram') => {
     try {
-      // 構建 OAuth URL，包含前端回調 URL
+      // 構建 OAuth URL（後端會自動處理 redirect）
       const baseUrl = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080').replace(
         /\/+$/,
         ''
       );
-      const frontendBaseUrl = window.location.origin;
-      const frontendCallbackUrl = `${frontendBaseUrl}/auth/callback`;
-
-      const authUrl = `${baseUrl}/auth/${provider}?redirect_uri=${encodeURIComponent(frontendCallbackUrl)}`;
+      const authUrl = `${baseUrl}/auth/${provider}`;
 
       // 使用 redirect 而非 popup
       window.location.href = authUrl;

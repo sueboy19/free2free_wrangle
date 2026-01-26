@@ -275,9 +275,23 @@ wrangler pages deploy dist --project-name=free2free --branch=master
 - [ ] 所有測試已通過（`npm run test`）
 - [ ] 資料庫遷移已在 staging 測試過
 - [ ] **執行 OAuth codes migration** (`0002_add_oauth_codes.sql`)
-- [ ] production 的 secrets 已設定
+- [ ] **執行 OAuth states migration** (`0003_add_oauth_states.sql`)
+- [ ] production 的 secrets 已設定（包括 FRONTEND_URL）
 - [ ] CORS_ORIGINS 已更新為生產域名
 - [ ] 檢查 wrangler.toml 中的生產環境設定
+
+**重要提醒**：OAuth 登入需要執行三個 migration 檔案：
+
+```bash
+# 1. 初始化資料庫（首次部署）
+wrangler d1 execute DB --env production --remote --file=./migrations/0001_initial.sql
+
+# 2. OAuth code 表（短期認證碼機制）
+wrangler d1 execute DB --env production --remote --file=./migrations/0002_add_oauth_codes.sql
+
+# 3. OAuth states 表（CSRF 防護）
+wrangler d1 execute DB --env production --remote --file=./migrations/0003_add_oauth_states.sql
+```
 
 **重要提醒**：OAuth 登入需要執行兩個 migration 檔案：
 
@@ -298,23 +312,12 @@ wrangler d1 execute DB --env production --remote --file=./migrations/0002_add_oa
 ```bash
 # 初始化資料庫
 wrangler d1 execute DB --local --file=./migrations/0001_initial.sql
-
-# 驗證資料表
-wrangler d1 execute DB --local --command="SELECT name FROM sqlite_master WHERE type='table';"
 ```
 
 **Staging 環境**：
 
 ```bash
 wrangler d1 execute free2free-db-staging --remote --file=./migrations/0001_initial.sql
-wrangler d1 execute free2free-db-staging --remote --file=./migrations/0002_add_oauth_codes.sql
-```
-
-**Production 環境**：
-
-```bash
-wrangler d1 execute DB --env production --remote --file=./migrations/0001_initial.sql
-wrangler d1 execute DB --env production --remote --file=./migrations/0002_add_oauth_codes.sql
 ```
 
 ### 重置測試資料
@@ -418,6 +421,13 @@ wrangler d1 execute DB --env production --remote --command="..."
 
 本專案使用 **redirect + 短期 code + API 交換** 方式實作 OAuth 登入，解決手機端 popup 被阻擋的問題，同時確保資料安全。
 
+#### 🔒 安全特性
+
+- **CSRF 防護**: 使用隨機 UUID 作為 state 參數，存儲到數據庫，驗證後刪除（一次性使用）
+- **開放重定向防護**: 前端 callback URL 固定，不接受用戶輸入
+- **短期 Code 機制**: 避免直接在 URL 中暴露 JWT token
+- **過期清理**: 過期的 state 和 code 會被自動清理
+
 #### 完整流程
 
 ```
@@ -436,10 +446,11 @@ wrangler d1 execute DB --env production --remote --command="..."
 ┌─────────────────────────────────┐
 │  後端                            │
 │  GET /auth/:provider            │
-│  - 生成短期 code                │
+│  - 生成隨機 state (UUID)        │
+│  - 存儲 state 到 oauth_states   │
 │  - 重定向到 Facebook/Instagram   │
 └────┬────────────────────────────┘
-     │ 3. redirect 到 OAuth provider
+     │ 3. redirect 到 OAuth provider (帶 state)
      ▼
 ┌─────────────────────┐
 │  Facebook/Instagram │
@@ -450,6 +461,8 @@ wrangler d1 execute DB --env production --remote --command="..."
 ┌─────────────────────────────────────────┐
 │  後端                                  │
 │  GET /auth/:provider/callback           │
+│  - 驗證 state (防 CSRF)              │
+│  - 刪除 state (一次性使用)            │
 │  - 用 code 換取 access token            │
 │  - 獲取用戶資料                        │
 │  - 生成 JWT tokens                     │
@@ -489,13 +502,12 @@ wrangler d1 execute DB --env production --remote --command="..."
 **1. 開始 OAuth 流程**
 
 ```
-GET /auth/:provider?redirect_uri=<前端回調URL>
+GET /auth/:provider
 ```
 
 參數：
 
 - `provider`: `facebook` 或 `instagram`
-- `redirect_uri`: (可選) 前端回調 URL，預設為 `{origin}/auth/callback`
 
 回應：
 
@@ -510,7 +522,7 @@ GET /auth/:provider/callback?code=...&state=...
 參數：
 
 - `code`: OAuth provider 授權碼
-- `state`: 包含前端回調 URL 的狀態參數
+- `state`: 隨機 UUID（用於 CSRF 防護）
 
 回應：
 
@@ -545,7 +557,7 @@ Content-Type: application/json
 }
 ```
 
-**3. 刷新 Token**
+**4. 刷新 Token**
 
 ```
 POST /auth/refresh
@@ -554,7 +566,7 @@ POST /auth/refresh
 }
 ```
 
-**4. 登出**
+**5. 登出**
 
 ```
 POST /auth/logout
@@ -564,12 +576,63 @@ POST /auth/logout
 }
 ```
 
-#### 資料安全考量
+#### 資料表結構
 
-| 方案                              | 優點                                                                                                      | 缺點                                                                              |
-| --------------------------------- | --------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| **舊方案** - Popup + postMessage  | 桌面體驗好                                                                                                | ❌ 手機端 popup 被阻擋<br>❌ `window.opener` 在手機可能為 null<br>❌ 跨域限制嚴格 |
-| **新方案** - Redirect + 短期 Code | ✅ 手機桌面都通用<br>✅ 無 popup 限制<br>✅ Token 不暴露在 URL<br>✅ Code 一次性使用<br>✅ 5 分鐘短期有效 | 多一個 API 請求                                                                   |
+**oauth_states 表**（防止 CSRF）
+
+```sql
+CREATE TABLE oauth_states (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  state TEXT NOT NULL UNIQUE,        -- 隨機 UUID
+  expires_at TEXT NOT NULL,         -- 過期時間（10分鐘）
+  created_at TEXT NOT NULL
+);
+```
+
+**oauth_codes 表**（避免 token 暴露）
+
+```sql
+CREATE TABLE oauth_codes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  code TEXT NOT NULL UNIQUE,
+  user_id INTEGER NOT NULL,
+  access_token TEXT NOT NULL,
+  refresh_token TEXT NOT NULL,
+  expires_at TEXT NOT NULL,         -- 過期時間（5分鐘）
+  created_at TEXT NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
+```
+
+#### 環境變量配置
+
+```bash
+# wrangler.toml [vars] (本地開發默認值）
+[vars]
+FRONTEND_URL = "http://localhost:3000"
+
+# wrangler.toml.example (參考)
+[vars]
+FRONTEND_URL = "http://localhost:3000"
+
+[env.production.vars]
+FRONTEND_URL = "https://free2free.com"
+```
+
+#### 清理過期記錄
+
+定期清理過期的 OAuth 記錄：
+
+```bash
+# 本地開發
+npm run cleanup:oauth:local
+
+# Staging
+npm run cleanup:oauth:staging
+
+# Production
+npm run cleanup:oauth:prod
+```
 
 #### 前端實作說明
 
@@ -578,7 +641,7 @@ POST /auth/logout
 ```typescript
 // 登入方法 - 使用 redirect 方式
 const login = async (provider: 'facebook' | 'instagram') => {
-  const authUrl = `${baseUrl}/auth/${provider}?redirect_uri=${frontendCallbackUrl}`;
+  const authUrl = `${baseUrl}/auth/${provider}`;
   window.location.href = authUrl;
 };
 
@@ -653,155 +716,6 @@ const publicRoutes = ['Home', 'Login', 'AuthCallback'];
 if (publicRoutes.includes(to.name as string)) {
   next();
   return;
-}
-```
-
-┌──────────┐
-│ 用戶 │
-└────┬─────┘
-│ 1. 點擊登入
-▼
-┌──────────────────────┐
-│ 前端 │
-│ /login → AuthStore │
-│ login() 方法 │
-└────┬─────────────────┘
-│ 2. redirect 到後端
-▼
-┌─────────────────────────────────┐
-│ 後端 │
-│ GET /auth/:provider │
-│ - 生成 state (含前端回調 URL) │
-│ - 重定向到 Facebook/Instagram │
-└────┬────────────────────────────┘
-│ 3. redirect 到 OAuth provider
-▼
-┌─────────────────────┐
-│ Facebook/Instagram │
-│ 授權頁面 │
-└────┬────────────────┘
-│ 4. 用戶授權後 callback
-▼
-┌─────────────────────────────────────────┐
-│ 後端 │
-│ GET /auth/:provider/callback │
-│ - 用 code 換取 access token │
-│ - 獲取用戶資料 │
-│ - 生成 JWT tokens │
-│ - 儲存到 oauth_codes 表 (5分鐘過期) │
-│ - 重定向到前端 /auth/callback#code=... │
-└────┬────────────────────────────────────┘
-│ 5. redirect 到前端
-▼
-┌─────────────────────────────────┐
-│ 前端 │
-│ /auth/callback (AuthCallback) │
-│ - 從 URL hash 解析 code │
-│ - 調用 /auth/exchange-code │
-└────┬────────────────────────────┘
-│ 6. POST exchange code
-▼
-┌─────────────────────────────────┐
-│ 後端 │
-│ POST /auth/exchange-code │
-│ - 驗證 code 是否有效 │
-│ - 返回 token 和 user 資料 │
-│ - 刪除已使用的 code (一次性) │
-└────┬────────────────────────────┘
-│ 7. 返回 tokens
-▼
-┌──────────────────────┐
-│ 前端 │
-│ - 儲存 token │
-│ - 更新 AuthStore │
-│ - 跳轉首頁 │
-└──────────────────────┘
-
-```
-
-#### API 端點
-
-**1. 開始 OAuth 流程**
-
-```
-
-GET /auth/:provider?redirect_uri=<前端回調URL>
-
-```
-
-參數：
-
-- `provider`: `facebook` 或 `instagram`
-- `redirect_uri`: (可選) 前端回調 URL，預設為 `{origin}/auth/callback`
-
-回應：
-
-- 重定向到 OAuth provider 授權頁面
-
-**2. OAuth Provider Callback (僅供 OAuth provider 調用)**
-
-```
-
-GET /auth/:provider/callback?code=...&state=...
-
-```
-
-參數：
-
-- `code`: OAuth provider 授權碼
-- `state`: 包含前端回調 URL 的狀態參數
-
-回應：
-
-- 重定向到前端 `/auth/callback#code=<短期認證碼>`
-
-**3. 用 Code 換取 Token**
-
-```
-
-POST /auth/exchange-code
-Content-Type: application/json
-
-{
-"code": "<短期認證碼>"
-}
-
-````
-
-回應：
-
-```json
-{
-  "access_token": "<JWT access token>",
-  "refresh_token": "<JWT refresh token>",
-  "user": {
-    "id": 1,
-    "social_id": "facebook_user_id",
-    "social_provider": "facebook",
-    "name": "使用者名稱",
-    "email": "user@example.com",
-    "avatar_url": "https://...",
-    "is_admin": false
-  }
-}
-````
-
-**4. 刷新 Token**
-
-```
-POST /auth/refresh
-{
-  "refresh_token": "<refresh_token>"
-}
-```
-
-**5. 登出**
-
-```
-POST /auth/logout
-{
-  "refresh_token": "<refresh_token>",
-  "session_id": "<session_id>"
 }
 ```
 
