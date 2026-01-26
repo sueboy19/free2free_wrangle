@@ -47,7 +47,7 @@ router.get('/auth/:provider', async (c) => {
 
   // 生成隨機 state 並存儲到數據庫（防止 CSRF 攻擊）
   const state = crypto.randomUUID();
-  const stateExpiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10分鐘過期
+  const stateExpiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString(); // 5分鐘過期
 
   await c.env.DB.prepare(
     `INSERT INTO oauth_states (state, expires_at, created_at)
@@ -67,11 +67,25 @@ router.get('/auth/:provider/callback', async (c) => {
   const state = c.req.query('state');
 
   if (!code) {
-    throw new Error('Authorization code is required');
+    console.error(
+      '[OAuth Callback] Missing authorization code:',
+      JSON.stringify({
+        provider,
+        timestamp: new Date().toISOString(),
+      })
+    );
+    throw new Error('授權碼丟失，請重新登入');
   }
 
   if (!state) {
-    throw new Error('State parameter is required');
+    console.error(
+      '[OAuth Callback] Missing state parameter:',
+      JSON.stringify({
+        provider,
+        timestamp: new Date().toISOString(),
+      })
+    );
+    throw new Error('授權碼無效，請重新登入');
   }
 
   // 驗證 state（防止 CSRF 攻擊）
@@ -82,7 +96,15 @@ router.get('/auth/:provider/callback', async (c) => {
     .first();
 
   if (!stateRecord) {
-    throw new Error('Invalid or expired state');
+    console.error(
+      '[OAuth State] Invalid or expired state:',
+      JSON.stringify({
+        provider,
+        state,
+        timestamp: new Date().toISOString(),
+      })
+    );
+    throw new Error('授權已過期，請重新登入');
   }
 
   // 刪除已使用的 state（一次性使用）

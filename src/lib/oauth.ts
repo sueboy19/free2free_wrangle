@@ -47,7 +47,16 @@ export class FacebookOAuthProvider implements OAuthProvider {
     const data: any = await response.json();
 
     if (data.error) {
-      throw new Error(`Facebook OAuth error: ${data.error.message} (code: ${data.error.code})`);
+      console.error(
+        '[Facebook OAuth] Token exchange failed:',
+        JSON.stringify({
+          error_type: data.error.type || 'unknown',
+          error_code: data.error.code,
+          error_message: data.error.message,
+          timestamp: new Date().toISOString(),
+        })
+      );
+      throw new Error('Facebook 授權失敗，請重新登入');
     }
 
     return data.access_token;
@@ -63,7 +72,15 @@ export class FacebookOAuthProvider implements OAuthProvider {
     const data: any = await response.json();
 
     if (data.error) {
-      throw new Error(`Facebook API error: ${data.error.message}`);
+      console.error(
+        '[Facebook OAuth] Get user profile failed:',
+        JSON.stringify({
+          error_code: data.error.code,
+          error_message: data.error.message,
+          timestamp: new Date().toISOString(),
+        })
+      );
+      throw new Error('無法獲取用戶資訊');
     }
 
     return {
@@ -116,7 +133,15 @@ export class InstagramOAuthProvider implements OAuthProvider {
     const data: any = await response.json();
 
     if (data.error_type) {
-      throw new Error(`Instagram OAuth error: ${data.error_message}`);
+      console.error(
+        '[Instagram OAuth] Token exchange failed:',
+        JSON.stringify({
+          error_type: data.error_type || 'unknown',
+          error_message: data.error_message,
+          timestamp: new Date().toISOString(),
+        })
+      );
+      throw new Error('Instagram 授權失敗，請重新登入');
     }
 
     return data.access_token;
@@ -132,7 +157,15 @@ export class InstagramOAuthProvider implements OAuthProvider {
     const data: any = await response.json();
 
     if (data.error) {
-      throw new Error(`Instagram API error: ${data.error.message}`);
+      console.error(
+        '[Instagram OAuth] Get user profile failed:',
+        JSON.stringify({
+          error_type: data.error_type || 'unknown',
+          error_message: data.error.message,
+          timestamp: new Date().toISOString(),
+        })
+      );
+      throw new Error('無法獲取 Instagram 用戶資訊，請重新登入');
     }
 
     return {
