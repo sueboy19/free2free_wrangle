@@ -7,7 +7,7 @@ export interface Env {
   FACEBOOK_SECRET: string;
   INSTAGRAM_KEY: string;
   INSTAGRAM_SECRET: string;
-  BASE_URL: string;
+  BACKEND_API_BASE_URL: string;
   FRONTEND_URL: string;
   CORS_ORIGINS: string;
   ENVIRONMENT?: string;

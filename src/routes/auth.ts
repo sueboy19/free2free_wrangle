@@ -28,7 +28,7 @@ router.get('/auth/:provider', async (c) => {
   const frontendCallbackUrl =
     `${c.env.FRONTEND_URL}/auth/callback` || 'http://localhost:3000/auth/callback';
 
-  const redirectUri = `${c.env.BASE_URL}/auth/${provider}/callback`;
+  const redirectUri = `${c.env.BACKEND_API_BASE_URL}/auth/${provider}/callback`;
 
   let oauthProvider;
   if (provider === 'facebook') {
@@ -114,7 +114,7 @@ router.get('/auth/:provider/callback', async (c) => {
   const frontendCallbackUrl =
     `${c.env.FRONTEND_URL}/auth/callback` || 'http://localhost:3000/auth/callback';
 
-  const redirectUri = `${c.env.BASE_URL}/auth/${provider}/callback`;
+  const redirectUri = `${c.env.BACKEND_API_BASE_URL}/auth/${provider}/callback`;
 
   let oauthProvider;
   if (provider === 'facebook') {

@@ -25,6 +25,7 @@
 **檔案：** `scripts/deploy.sh`, `wrangler.toml.prod`
 
 **驗證：**
+
 - [x] 部署腳本已創建
 - [x] 生產配置已創建
 
@@ -39,6 +40,7 @@
 **檔案：** `docs/deployment.md`
 
 **驗證：**
+
 - [x] 部署文檔已創建
 - [x] 包含所有必要的步驟
 
@@ -53,6 +55,7 @@
 **檔案：** `test/performance/api-performance.test.ts`
 
 **驗證：**
+
 - [x] 性能測試已創建
 - [x] 測試基本結構完整
 
@@ -65,6 +68,7 @@
 **說明：** 在本地進行最終驗證測試
 
 **驗證：**
+
 - [x] TypeScript 編譯無錯誤
 - [x] Lint 無錯誤
 - [x] 單元測試通過
@@ -80,6 +84,7 @@
 **說明：** 在 README 中添加部署相關說明
 
 **驗證：**
+
 - [x] README 已更新
 - [x] 部署說明清晰
 
@@ -96,16 +101,19 @@
 ### 1. 部署準備（Tasks 5.1-5.3）
 
 ✅ **Task 5.1: 創建部署腳本**
+
 - `scripts/deploy.sh` - 自動化部署腳本
 - 包含編譯、測試、lint、部署步驟
 - 錇序錯誤處理
 
 ✅ **Task 5.2: 創建生產環境配置**
+
 - `wrangler.toml.prod` - 生產環境配置
 - 環境變數設置
 - CORS 配置優化
 
 ✅ **Task 5.3: 創建部署文檔**
+
 - `docs/deployment.md` - 完整的部署指南
 - 環境變數說明
 - 故障排除指南
@@ -114,12 +122,14 @@
 ### 2. 測試相關（Tasks 5.4-5.5）
 
 ✅ **Task 5.4: 本地驗證測試**
+
 - TypeScript 編譯檢查
 - ESLint 檢查
 - 單元測試通過（33 個測試通過）
 - 本地開發服務器驗證
 
 ✅ **Task 5.5: 創建性能測試**
+
 - `test/performance/api-performance.test.ts` - API 性能測試
 - 健康檢查測試
 - 端點響應時間測試
@@ -128,6 +138,7 @@
 ### 3. 更新文檔（Tasks 5.6, 5.9-5.10）
 
 ✅ **Task 5.6: 更新 README 添加部署說明**
+
 - 添加部署到生產環境的說明
 - 添加環境變數配置指南
 - 添加故障排除指南
@@ -136,19 +147,24 @@
 ## 📁 已創建/更新的檔案
 
 ### 腳本檔
+
 - ✅ `scripts/deploy.sh` - 部署腳本
 
 ### 配置檔案
+
 - ✅ `wrangler.toml.prod` - 生產環境配置
 
 ### 文檔
+
 - ✅ `docs/deployment.md` - 部署指南
 
 ### 測試檔案
+
 - ✅ `test/unit/*.test.ts` - 單元測試（更新後）
 - ✅ `test/integration/*.test.ts` - 整合測試（更新後）
 
 ### �畫和文檔
+
 - ✅ `PHASE_5_PLAN.md` - 完整的階段 5 計畫
 - ✅ `PHASE_5_SUMMARY.md` - 完成摘要
 - ✅ `README.md` - 添加部署說明
@@ -210,6 +226,7 @@
 **檔案：** `scripts/deploy.sh`, `wrangler.toml.prod`
 
 **驗證：**
+
 - [x] 部署腳本已創建
 - [x] 生產配置已創建
 
@@ -224,6 +241,7 @@
 **檔案：** `docs/deployment.md`
 
 **驗證：**
+
 - [x] 部署文檔已創建
 - [x] 包含所有必要的步驟
 
@@ -238,6 +256,7 @@
 **檔案：** `test/performance/api-performance.test.ts`
 
 **驗證：**
+
 - [x] 性能測試已創建
 - [x] 測試基本結構完整
 
@@ -250,6 +269,7 @@
 **說明：** 在本地進行最終驗證測試
 
 **驗證：**
+
 - [x] TypeScript 編譯通過
 - [x] Lint 無錯誤
 - [x] 單元測試通過
@@ -265,6 +285,7 @@
 **說明：** 在 README 中添加部署相關說明
 
 **驗證：**
+
 - [x] README 已更新
 - [x] 部署說明清晰
 
@@ -281,11 +302,13 @@
 ### 1. 部署準備（Tasks 5.1-5.3）
 
 ✅ **Task 5.1: 創建部署腳本**
+
 - `scripts/deploy.sh` - 自動化部署腳本
 - 包含編譯、測試、lint、部署步驟
 - 錇序錯誤處理
 
 ✅ **Task 5.2: 創建部署文檔**
+
 - `docs/deployment.md` - 完整的部署指南
 - 環境變數設置說明
 - 部署步驟詳解
@@ -293,12 +316,14 @@
 - 監控和日誌說明
 
 ✅ **Task 5.3: 創建性能測試**
+
 - `test/performance/api-performance.test.ts` - API 性能測試
 - 健康檢查測試
 - 端點響應時間測試
 - 並發請求測試
 
 ✅ **Task 5.4: 本地驗證測試**
+
 - TypeScript 編譯無錯誤
 - ESLint 無錯誤
 - 33 個測試通過
@@ -307,6 +332,7 @@
 ### 2. README 更新（Task 5.5）
 
 ✅ **Task 5.5: 更新 README 添加部署說明**
+
 - 添加部署到 Cloudflare Workers 的說明
 - 添加環境變數配置說明
 - 添加故障排除指南
@@ -350,18 +376,23 @@ wrangler deploy
 ## 📁 已創建/更新的檔案
 
 ### 腳本檔案
+
 - ✅ `scripts/deploy.sh` - 部署腳本
 
 ### 配置檔案
+
 - ✅ `wrangler.toml.prod` - 生產環境配置
 
 ### 文檔檔案
+
 - ✅ `docs/deployment.md` - 部署指南
 
 ### 測試檔案
+
 - ✅ `test/performance/api-performance.test.ts` - 性能測試
 
 ### 文檔檔案
+
 - ✅ `PHASE_5_PLAN.md` - 完整的階段 5 計畫
 - ✅ `PHASE_5_SUMMARY.md` - 完成摘要
 - ✅ `README.md` - 添加部署說明
@@ -446,6 +477,7 @@ wrangler deploy
 **檔案：** `test/e2e/complete-flow.test.ts`
 
 **實現內容：**
+
 ```typescript
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import type { Env } from '../../src/types';
@@ -470,7 +502,7 @@ describe('Complete Flow E2E Tests', () => {
       FACEBOOK_SECRET: process.env.FACEBOOK_SECRET || 'test',
       INSTAGRAM_KEY: process.env.INSTAGRAM_KEY || 'test',
       INSTAGRAM_SECRET: process.env.INSTAGRAM_SECRET || 'test',
-      BASE_URL: process.env.BASE_URL || 'http://localhost:8787',
+      BACKEND_API_BASE_URL: process.env.BACKEND_API_BASE_URL || 'http://localhost:8787',
       FRONTEND_URL: 'http://localhost:3000',
       CORS_ORIGINS: 'http://localhost:3000,http://localhost:5173',
     };
@@ -497,6 +529,7 @@ describe('Complete Flow E2E Tests', () => {
 ```
 
 **驗證：**
+
 - [ ] 端到端測試已創建
 - [ ] 測試可以執行
 
@@ -511,6 +544,7 @@ describe('Complete Flow E2E Tests', () => {
 **檔案：** `scripts/deploy.sh`
 
 **實現內容：**
+
 ```bash
 #!/bin/bash
 
@@ -556,6 +590,7 @@ fi
 ```
 
 **驗證：**
+
 - [ ] 部署腳本已創建
 - [ ] 腳本可執行
 
@@ -570,6 +605,7 @@ fi
 **檔案：** `wrangler.toml.prod`
 
 **實現內容：**
+
 ```toml
 name = "free2free-api"
 main = "src/index.ts"
@@ -602,6 +638,7 @@ CORS_ORIGINS = "https://free2free.example.com"
 ```
 
 **驗證：**
+
 - [ ] 生產配置已創建
 - [ ] 所有環境變數已設置
 
@@ -616,7 +653,8 @@ CORS_ORIGINS = "https://free2free.example.com"
 **檔案：** `docs/deployment.md`
 
 **實現內容：**
-```markdown
+
+````markdown
 # Free2Free API 部署指南
 
 ## 前置要求
@@ -632,6 +670,7 @@ CORS_ORIGINS = "https://free2free.example.com"
 ```bash
 npm install -g wrangler
 ```
+````
 
 ### 2. 登入 Cloudflare
 
@@ -699,16 +738,16 @@ wrangler tail
 
 ## 環境變數
 
-| 變數名稱 | 說明 | 示例 |
-|-----------|--------|--------|
-| JWT_SECRET | JWT 加密密鑰 | 至少 32 個隨機字符 |
-| SESSION_KEY | Session 加密密鑰 | 至少 32 個隨機字符 |
-| FACEBOOK_KEY | Facebook App ID | 從 Facebook Developer 獲取 |
-| FACEBOOK_SECRET | Facebook App Secret | 從 Facebook Developer 獲取 |
-| INSTAGRAM_KEY | Instagram App ID | 從 Instagram Developer 獲取 |
-| INSTAGRAM_SECRET | Instagram App Secret | 從 Instagram Developer 獲取 |
-| ENVIRONMENT | 環境標識 | production |
-| CORS_ORIGINS | CORS 允許的來源 | https://free2free.example.com |
+| 變數名稱         | 說明                 | 示例                          |
+| ---------------- | -------------------- | ----------------------------- |
+| JWT_SECRET       | JWT 加密密鑰         | 至少 32 個隨機字符            |
+| SESSION_KEY      | Session 加密密鑰     | 至少 32 個隨機字符            |
+| FACEBOOK_KEY     | Facebook App ID      | 從 Facebook Developer 獲取    |
+| FACEBOOK_SECRET  | Facebook App Secret  | 從 Facebook Developer 獲取    |
+| INSTAGRAM_KEY    | Instagram App ID     | 從 Instagram Developer 獲取   |
+| INSTAGRAM_SECRET | Instagram App Secret | 從 Instagram Developer 獲取   |
+| ENVIRONMENT      | 環境標識             | production                    |
+| CORS_ORIGINS     | CORS 允許的來源      | https://free2free.example.com |
 
 ## 故障排除
 
@@ -750,7 +789,8 @@ wrangler rollback
 # 實時查看日誌
 wrangler tail
 ```
-```
+
+````
 
 **驗證：**
 - [ ] 部署文檔已創建
@@ -777,9 +817,10 @@ npm run lint
 
 # 4. 啟動本地開發服務器
 npm run dev
-```
+````
 
 **驗證：**
+
 - [ ] TypeScript 編譯通過
 - [ ] 所有測試通過
 - [ ] Lint 檢查通過
@@ -795,6 +836,7 @@ npm run dev
 **說明：** 執行實際部署
 
 **實現步驟：**
+
 ```bash
 # 1. 創建 D1 資料庫（如果還未創建）
 wrangler d1 create free2free-db
@@ -817,6 +859,7 @@ npm run deploy
 ```
 
 **驗證：**
+
 - [ ] 應用成功部署
 - [ ] 可以訪問 API
 - [ ] 所有路由正常工作
@@ -830,18 +873,22 @@ npm run deploy
 **說明：** 驗證生產環境是否正常運行
 
 **測試清單：**
+
 ```markdown
 ### 健康檢查
+
 - [ ] GET / 返回 200
 - [ ] 響應時間 < 500ms
 
 ### 認證功能
+
 - [ ] OAuth 流程正常
 - [ ] JWT 生成和驗證正常
 - [ ] Token 刷新正常
 - [ ] 登出正常
 
 ### Admin API
+
 - [ ] POST /admin/locations 正常
 - [ ] GET /admin/locations 正常
 - [ ] PUT /admin/locations/:id 正常
@@ -852,6 +899,7 @@ npm run deploy
 - [ ] DELETE /admin/activities/:id 正常
 
 ### User API
+
 - [ ] GET /matches 正常
 - [ ] GET /user/matches 正常（需認證）
 - [ ] GET /matches/:id 正常
@@ -859,6 +907,7 @@ npm run deploy
 - [ ] GET /matches/:id/reviews 正常
 
 ### Organizer API
+
 - [ ] POST /matches 正常（需認證）
 - [ ] PUT /matches/:id/status 正常（需認證）
 - [ ] POST /matches/:id/join 正常（需認證）
@@ -866,23 +915,27 @@ npm run deploy
 - [ ] DELETE /matches/:id/join 正常（需認證）
 
 ### Review API
+
 - [ ] POST /reviews 正常（需認證）
 - [ ] GET /reviews 正常
 - [ ] POST /reviews/:id/like 正常（需認證）
 - [ ] DELETE /reviews/:id 正常（需認證）
 
 ### 資料庫操作
+
 - [ ] 所有 CRUD 操作正常
 - [ ] 數據一致性正確
 - [ ] 關聯查詢正常
 
 ### 錯誤處理
+
 - [ ] 錯誤響應格式正確
 - [ ] HTTP 狀態碼正確
 - [ ] 錯誤消息清晰
 ```
 
 **驗證：**
+
 - [ ] 所有測試項目通過
 - [ ] API 穩定運行
 - [ ] 性能符合要求
@@ -898,6 +951,7 @@ npm run deploy
 **檔案：** `test/performance/api-performance.test.ts`
 
 **實現內容：**
+
 ```typescript
 import { describe, it, expect } from 'vitest';
 import { Hono } from 'hono';
@@ -914,9 +968,12 @@ describe('API Performance Tests', () => {
 
   it('should handle list locations in < 500ms', async () => {
     const start = Date.now();
-    const response = await fetch('https://free2free-api.YOUR_SUBDOMAIN.workers.dev/admin/locations', {
-      headers: { Authorization: 'Bearer YOUR_TOKEN' },
-    });
+    const response = await fetch(
+      'https://free2free-api.YOUR_SUBDOMAIN.workers.dev/admin/locations',
+      {
+        headers: { Authorization: 'Bearer YOUR_TOKEN' },
+      }
+    );
     const duration = Date.now() - start;
 
     expect(response.status).toBe(200);
@@ -928,6 +985,7 @@ describe('API Performance Tests', () => {
 ```
 
 **驗證：**
+
 - [ ] 性能測試已創建
 - [ ] API 響應時間符合要求
 
@@ -940,7 +998,8 @@ describe('API Performance Tests', () => {
 **說明：** 在 README 中添加部署相關說明
 
 **實現內容：**
-```markdown
+
+````markdown
 ## 部署到生產環境
 
 詳細的部署指南請參考 [docs/deployment.md](docs/deployment.md)
@@ -955,6 +1014,7 @@ wrangler secret put SESSION_KEY
 # 2. 部署
 npm run deploy
 ```
+````
 
 ### 驗證部署
 
@@ -969,6 +1029,7 @@ curl https://free2free-api.YOUR_SUBDOMAIN.workers.dev/
 # 實時查看日誌
 wrangler tail
 ```
+
 ```
 
 **驗證：**
@@ -1079,3 +1140,4 @@ wrangler tail
 **更新日期：** 2026-01-16
 **當前進度：** 0/10 任務完成
 **狀態：** 進行中
+```

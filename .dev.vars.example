@@ -8,4 +8,4 @@ INSTAGRAM_KEY=your_local_instagram_app_key
 INSTAGRAM_SECRET=your_local_instagram_app_secret
 
 CORS_ORIGINS=http://localhost:5173,http://localhost:3000
-BASE_URL=
+BACKEND_API_BASE_URL=

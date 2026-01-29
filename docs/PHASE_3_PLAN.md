@@ -23,6 +23,7 @@
 **檔案：** `src/lib/jwt.ts`
 
 **實現內容：**
+
 ```typescript
 import { SignJWT, jwtVerify } from 'jose';
 import type { JWTPayload, User } from '../types';
@@ -112,6 +113,7 @@ export function createJWTManager(secret: string): JWTManager {
 ```
 
 **驗證：**
+
 - [ ] JWT 生成功能正常
 - [ ] JWT 驗證功能正常
 - [ ] Token 過期處理正確
@@ -127,6 +129,7 @@ export function createJWTManager(secret: string): JWTManager {
 **檔案：** `src/lib/session.ts`
 
 **實現內容：**
+
 ```typescript
 import type { D1Database } from '@cloudflare/workers-types';
 import type { User } from '../types';
@@ -184,12 +187,11 @@ export class SessionManager {
     };
   }
 
-  async updateSession(
-    sessionId: string,
-    data: Record<string, unknown>
-  ): Promise<Session | null> {
+  async updateSession(sessionId: string, data: Record<string, unknown>): Promise<Session | null> {
     await this.db
-      .prepare('UPDATE sessions SET data = ?, expires_at = datetime("now", "+1440 minutes") WHERE id = ?')
+      .prepare(
+        'UPDATE sessions SET data = ?, expires_at = datetime("now", "+1440 minutes") WHERE id = ?'
+      )
       .bind(JSON.stringify(data), sessionId)
       .run();
 
@@ -202,7 +204,10 @@ export class SessionManager {
   }
 
   async deleteSessionsByUserId(userId: number): Promise<number> {
-    const result = await this.db.prepare('DELETE FROM sessions WHERE user_id = ?').bind(userId).run();
+    const result = await this.db
+      .prepare('DELETE FROM sessions WHERE user_id = ?')
+      .bind(userId)
+      .run();
     return result.meta.changes || 0;
   }
 
@@ -245,6 +250,7 @@ export function createSessionManager(db: D1Database): SessionManager {
 ```
 
 **驗證：**
+
 - [ ] Session 創建功能正常
 - [ ] Session 查詢功能正常
 - [ ] Session 刪除功能正常
@@ -259,6 +265,7 @@ export function createSessionManager(db: D1Database): SessionManager {
 **說明：** 在 migrations/0001_initial.sql 中添加 sessions 表
 
 **實現內容：**
+
 ```sql
 CREATE TABLE IF NOT EXISTS sessions (
   id TEXT PRIMARY KEY,
@@ -274,6 +281,7 @@ CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
 ```
 
 **驗證：**
+
 - [ ] sessions 表已創建
 - [ ] 索引已創建
 
@@ -288,6 +296,7 @@ CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
 **檔案：** `src/lib/oauth.ts`
 
 **實現內容：**
+
 ```typescript
 import type { User } from '../types';
 
@@ -336,9 +345,7 @@ export class FacebookOAuthProvider implements OAuthProvider {
       code,
     });
 
-    const response = await fetch(
-      `https://graph.facebook.com/v18.0/oauth/access_token?${params}`
-    );
+    const response = await fetch(`https://graph.facebook.com/v18.0/oauth/access_token?${params}`);
     const data = await response.json();
 
     if (data.error) {
@@ -447,10 +454,7 @@ export class OAuthManager {
     return this.providers.get(name);
   }
 
-  async handleOAuthLogin(
-    providerName: string,
-    code: string
-  ): Promise<OAuthProfile> {
+  async handleOAuthLogin(providerName: string, code: string): Promise<OAuthProfile> {
     const provider = this.getProvider(providerName);
 
     if (!provider) {
@@ -466,6 +470,7 @@ export class OAuthManager {
 ```
 
 **驗證：**
+
 - [ ] Facebook OAuth 功能正常
 - [ ] Instagram OAuth 功能正常
 - [ ] 錯誤處理正確
@@ -481,6 +486,7 @@ export class OAuthManager {
 **檔案：** `src/middleware/auth.ts`
 
 **實現內容：**
+
 ```typescript
 import type { Context, Next } from 'hono';
 import type { Env } from '../types';
@@ -579,6 +585,7 @@ export const optionalAuthMiddleware = async (c: Context<{ Bindings: Env }>, next
 ```
 
 **驗證：**
+
 - [ ] JWT 認證正常
 - [ ] Admin 檢查正常
 - [ ] Optional auth 正常
@@ -594,6 +601,7 @@ export const optionalAuthMiddleware = async (c: Context<{ Bindings: Env }>, next
 **檔案：** `src/routes/auth.ts`
 
 **實現內容：**
+
 ```typescript
 import { Hono } from 'hono';
 import { Errors } from '../lib/errors';
@@ -609,7 +617,7 @@ router.get('/auth/:provider', async (c) => {
     throw Errors.validation('Invalid OAuth provider');
   }
 
-  const redirectUri = `${c.env.BASE_URL}/auth/${provider}/callback`;
+  const redirectUri = `${c.env.BACKEND_API_BASE_URL}/auth/${provider}/callback`;
 
   const { FacebookOAuthProvider, InstagramOAuthProvider } = await import('../lib/oauth');
 
@@ -642,7 +650,7 @@ router.get('/auth/:provider/callback', async (c) => {
     throw Errors.validation('Authorization code is required');
   }
 
-  const redirectUri = `${c.env.BASE_URL}/auth/${provider}/callback`;
+  const redirectUri = `${c.env.BACKEND_API_BASE_URL}/auth/${provider}/callback`;
 
   const { FacebookOAuthProvider, InstagramOAuthProvider } = await import('../lib/oauth');
 
@@ -673,18 +681,11 @@ router.get('/auth/:provider/callback', async (c) => {
 
   if (!user) {
     // Create new user
-    const result = await c.env.DB
-      .prepare(
-        `INSERT INTO users (social_id, social_provider, name, email, avatar_url, is_admin)
+    const result = await c.env.DB.prepare(
+      `INSERT INTO users (social_id, social_provider, name, email, avatar_url, is_admin)
          VALUES (?, ?, ?, ?, ?, 0)`
-      )
-      .bind(
-        profile.id,
-        provider,
-        profile.name,
-        profile.email || '',
-        profile.avatar_url || null
-      )
+    )
+      .bind(profile.id, provider, profile.name, profile.email || '', profile.avatar_url || null)
       .run();
 
     user = await c.env.DB.prepare('SELECT * FROM users WHERE id = ?')
@@ -788,9 +789,7 @@ router.post('/auth/refresh', async (c) => {
   const newTokens = await jwtManager.generateTokens(userData);
 
   // Delete old refresh token and create new one
-  await c.env.DB.prepare('DELETE FROM refresh_tokens WHERE token = ?')
-    .bind(refreshToken)
-    .run();
+  await c.env.DB.prepare('DELETE FROM refresh_tokens WHERE token = ?').bind(refreshToken).run();
 
   const { decode } = await import('jose');
   const decoded = decode(newTokens.refresh);
@@ -818,15 +817,11 @@ router.post('/auth/logout', async (c) => {
   const sessionId = body.session_id;
 
   if (refreshToken) {
-    await c.env.DB.prepare('DELETE FROM refresh_tokens WHERE token = ?')
-      .bind(refreshToken)
-      .run();
+    await c.env.DB.prepare('DELETE FROM refresh_tokens WHERE token = ?').bind(refreshToken).run();
   }
 
   if (sessionId) {
-    await c.env.DB.prepare('DELETE FROM sessions WHERE id = ?')
-      .bind(sessionId)
-      .run();
+    await c.env.DB.prepare('DELETE FROM sessions WHERE id = ?').bind(sessionId).run();
   }
 
   return c.json({ message: 'Logged out successfully' });
@@ -847,6 +842,7 @@ export default router;
 ```
 
 **驗證：**
+
 - [ ] OAuth 登入流程正常
 - [ ] Token 刷新正常
 - [ ] 登出功能正常
@@ -860,6 +856,7 @@ export default router;
 **說明：** 在 src/index.ts 中註冊認證路由和 middleware
 
 **實現內容：**
+
 ```typescript
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
@@ -900,6 +897,7 @@ export default app;
 ```
 
 **驗證：**
+
 - [ ] 路由註冊成功
 - [ ] Middleware 正確應用
 
@@ -912,6 +910,7 @@ export default app;
 **檔案：** `test/unit/jwt.test.ts`
 
 **實現內容：**
+
 ```typescript
 import { describe, it, expect } from 'vitest';
 import { JWTManager } from '../../src/lib/jwt';
@@ -974,6 +973,7 @@ describe('JWTManager', () => {
 ```
 
 **驗證：**
+
 - [ ] 所有測試通過
 - [ ] 錯誤處理正確
 
@@ -986,6 +986,7 @@ describe('JWTManager', () => {
 **檔案：** `test/unit/session.test.ts`
 
 **實現內容：**
+
 ```typescript
 import { describe, it, expect, beforeEach } from 'vitest';
 import { SessionManager } from '../../src/lib/session';
@@ -1052,6 +1053,7 @@ describe('SessionManager', () => {
 ```
 
 **驗證：**
+
 - [ ] 所有測試通過
 
 ---
@@ -1063,6 +1065,7 @@ describe('SessionManager', () => {
 **檔案：** `test/unit/oauth.test.ts`
 
 **實現內容：**
+
 ```typescript
 import { describe, it, expect, vi } from 'vitest';
 import { FacebookOAuthProvider, InstagramOAuthProvider, OAuthManager } from '../../src/lib/oauth';
@@ -1176,6 +1179,7 @@ describe('OAuthProvider', () => {
 ```
 
 **驗證：**
+
 - [ ] 所有測試通過
 
 ---
@@ -1187,6 +1191,7 @@ describe('OAuthProvider', () => {
 **檔案：** `test/integration/auth.test.ts`
 
 **實現內容：**
+
 ```typescript
 import { describe, it, expect, beforeEach } from 'vitest';
 import { Hono } from 'hono';
@@ -1268,6 +1273,7 @@ describe('Authentication Integration', () => {
 ```
 
 **驗證：**
+
 - [ ] 整合測試通過
 
 ---
@@ -1279,6 +1285,7 @@ describe('Authentication Integration', () => {
 **說明：** 在 src/types/index.ts 中添加 Session 相關類型
 
 **實現內容：**
+
 ```typescript
 export interface Session {
   id: string;
@@ -1310,6 +1317,7 @@ export interface LogoutRequest {
 ```
 
 **驗證：**
+
 - [ ] 類型定義完整
 
 ---
@@ -1321,6 +1329,7 @@ export interface LogoutRequest {
 **說明：** 在 src/lib/errors.ts 中添加認證相關錯誤
 
 **實現內容：**
+
 ```typescript
 export const ErrorCodes = {
   VALIDATION_ERROR: 'VALIDATION_ERROR',
@@ -1346,6 +1355,7 @@ export const Errors = {
 ```
 
 **驗證：**
+
 - [ ] 錯誤類型完整
 
 ---
@@ -1357,20 +1367,25 @@ export const Errors = {
 **說明：** 在 README.md 中添加認證相關說明
 
 **實現內容：**
+
 ```markdown
 ## 認證
 
 ### OAuth 登入流程
 
 1. 獲取 OAuth 授權 URL
-   ```
-   GET /auth/:provider
-   ```
+```
+
+GET /auth/:provider
+
+```
 
 2. 用戶授權後，系統回調
-   ```
-   GET /auth/:provider/callback?code=...
-   ```
+```
+
+GET /auth/:provider/callback?code=...
+
+```
 
 3. 返回 JWT token 和 session
 
@@ -1383,30 +1398,38 @@ export const Errors = {
 
 在請求頭中添加 Authorization：
 ```
+
 Authorization: Bearer <access_token>
+
 ```
 
 ### 刷新 Token
 
 ```
+
 POST /auth/refresh
 {
-  "refresh_token": "<refresh_token>"
+"refresh_token": "<refresh_token>"
 }
+
 ```
 
 ### 登出
 
 ```
+
 POST /auth/logout
 {
-  "refresh_token": "<refresh_token>",
-  "session_id": "<session_id>"
+"refresh_token": "<refresh_token>",
+"session_id": "<session_id>"
 }
+
 ```
+
 ```
 
 **驗證：**
+
 - [ ] 文檔完整
 
 ---
@@ -1437,6 +1460,7 @@ curl http://localhost:8787/auth/facebook
 ```
 
 **預期結果：**
+
 - ✅ TypeScript 編譯無錯誤
 - ✅ 所有測試通過
 - ✅ Lint 無警告
@@ -1475,6 +1499,7 @@ curl http://localhost:8787/auth/facebook
 完成階段 3 後，可以進入：
 
 **階段 4：API 路由實現**
+
 - Admin 路由
 - User 路由
 - Organizer 路由
