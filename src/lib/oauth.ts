@@ -31,6 +31,9 @@ export class FacebookOAuthProvider implements OAuthProvider {
       scope: 'email,public_profile',
       response_type: 'code',
       state: state || crypto.randomUUID(),
+      auth_type: 'rerequest',
+      display: 'touch',
+      override_m_site_login: 'true',
     });
     return `https://www.facebook.com/v18.0/dialog/oauth?${params}`;
   }
