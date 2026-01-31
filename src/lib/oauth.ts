@@ -59,7 +59,26 @@ export class FacebookOAuthProvider implements OAuthProvider {
           timestamp: new Date().toISOString(),
         })
       );
-      throw new Error('Facebook 授權失敗，請重新登入');
+
+      // 根據錯誤代碼返回更具體的錯誤訊息
+      const errorCode = data.error.code;
+
+      if (errorCode === 100) {
+        // 無效的參數（如無效的 redirect_uri）
+        throw new Error('Facebook 授權配置錯誤，請聯繫管理員');
+      } else if (errorCode === 190) {
+        // Access token 無效或過期
+        throw new Error('授權已過期，請重新登入');
+      } else if (errorCode === 200) {
+        // 用戶取消或拒絕權限
+        throw new Error('您已取消授權，如需登入請重新點擊登入按鈕');
+      } else if (data.error.error_subcode === 458) {
+        // 應用未安裝
+        throw new Error('請先安裝 Facebook 應用');
+      } else {
+        // 其他錯誤
+        throw new Error(`Facebook 授權失敗：${data.error.message}`);
+      }
     }
 
     return data.access_token;

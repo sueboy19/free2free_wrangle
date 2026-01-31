@@ -66,6 +66,50 @@ router.get('/auth/:provider/callback', async (c) => {
   const code = c.req.query('code');
   const state = c.req.query('state');
 
+  // 檢查 Facebook/Instagram 返回的錯誤參數（用戶取消授權等）
+  const error = c.req.query('error');
+  const errorCode = c.req.query('error_code');
+  const errorReason = c.req.query('error_reason');
+  const errorDescription = c.req.query('error_description');
+
+  if (error) {
+    console.error(
+      '[OAuth Callback] Provider returned error:',
+      JSON.stringify({
+        provider,
+        error,
+        error_code: errorCode,
+        error_reason: errorReason,
+        error_description: errorDescription,
+        timestamp: new Date().toISOString(),
+      })
+    );
+
+    // 根據錯誤類型顯示不同的錯誤訊息
+    let errorMessage = '登入失敗，請重試';
+
+    if (errorReason === 'user_denied' || errorCode === '200') {
+      // 用戶取消授權
+      errorMessage = '您已取消授權，如需登入請重新點擊登入按鈕';
+    } else if (errorReason === 'user_cancelled') {
+      // 用戶關閉登入視窗
+      errorMessage = '登入已取消';
+    } else if (error === 'access_denied') {
+      // 拒絕存取權限
+      errorMessage = '您拒絕了必要的權限，如需使用本服務請重新授權';
+    } else {
+      // 其他錯誤
+      errorMessage = errorDescription || '登入失敗，請重試';
+    }
+
+    // 重定向到前端並帶錯誤訊息
+    const frontendCallbackUrl =
+      `${c.env.FRONTEND_URL}/auth/callback` || 'http://localhost:3000/auth/callback';
+    const redirectUrl = `${frontendCallbackUrl}?error=${encodeURIComponent(errorMessage)}`;
+
+    return c.redirect(redirectUrl, 302);
+  }
+
   if (!code) {
     console.error(
       '[OAuth Callback] Missing authorization code:',
@@ -74,7 +118,10 @@ router.get('/auth/:provider/callback', async (c) => {
         timestamp: new Date().toISOString(),
       })
     );
-    throw new Error('授權碼丟失，請重新登入');
+    const frontendCallbackUrl =
+      `${c.env.FRONTEND_URL}/auth/callback` || 'http://localhost:3000/auth/callback';
+    const redirectUrl = `${frontendCallbackUrl}?error=${encodeURIComponent('授權碼丟失，請重新登入')}`;
+    return c.redirect(redirectUrl, 302);
   }
 
   if (!state) {
