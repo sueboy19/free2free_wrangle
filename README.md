@@ -58,6 +58,13 @@ npm run dev
 
 ### 6. 運行測試
 
+**注意：本專案有兩種 E2E 測試，請勿混淆：**
+
+- **後端 E2E 測試** (`npm run test:e2e`) - 測試 API，需手動執行 `db:reset`
+- **Frontend E2E 測試** (`npm run e2e`) - 測試前端 UI，自動執行 `db:reset`
+
+詳細說明請參考 [E2E 測試](#e2e-測試) 區塊。
+
 #### 後端測試
 
 ```bash
@@ -67,7 +74,7 @@ npm run test
 # 運行特定類型的測試
 npm run test:unit
 npm run test:integration
-npm run test:e2e
+npm run test:e2e  # ⚠️ 需先執行 npm run db:reset
 
 # 查看測試覆蓋率
 npm run test:coverage
@@ -745,30 +752,46 @@ test/              # 測試檔案
 
 ## E2E 測試
 
-### 後端 E2E 測試
+本專案有**兩種不同的 E2E 測試**，請根據需求選擇：
 
-本專案使用 TypeScript + vitest-pool-workers 構建後端 E2E 測試。
+---
 
-**運行測試**：
+### 📦 後端 E2E 測試（Backend API 測試）
+
+測試後端 API 的業務邏輯和正確性。
+
+**⚠️ 重要：需要手動重置資料庫**
 
 ```bash
-# 運行後端 E2E 測試
+# 1. 先重置資料庫
+npm run db:reset
+
+# 2. 再運行測試
 npm run test:e2e
 ```
 
-詳細說明請參考：[test/e2e/README.md](./test/e2e/README.md)
+**或一行指令完成：**
 
-### Frontend E2E 測試
+```bash
+npm run db:reset && npm run test:e2e
+```
 
-使用 Playwright 進行前端 E2E 測試。
+**測試範圍：**
 
-**重要說明**：
+- 配對流程
+- 競態條件
+- 審核驗證
+- 權限檢查
 
-- ✅ **自動執行 db:reset**：e2e 腳本會自動重置測試資料庫，確保測試環境乾淨
-- 🚫 **chromium 和 mobile 必須分開執行**：同時執行會導致測試超時（timeout）
-- 📱 **兩套測試環境**：包含 chromium（桌面版）和 mobile（iPhone 13）兩種裝置的測試
+**詳細說明：** [test/e2e/README.md](./test/e2e/README.md)
 
-**從根目錄一鍵執行（推薦）**：
+---
+
+### 🌐 Frontend E2E 測試（瀏覽器端測試）
+
+使用 Playwright 測試前端應用實際操作流程。
+
+**✅ 自動重置資料庫**
 
 ```bash
 # 運行桌面版測試（Chromium）
@@ -778,31 +801,35 @@ npm run e2e -- --project=chromium
 npm run e2e -- --project=mobile
 ```
 
-**其他執行方式**：
+**⚠️ 重要說明：**
+
+- ✅ 自動執行 `db:reset`（每次測試前重置資料庫）
+- 🚫 chromium 和 mobile 必須**分開執行**（同時執行會超時）
+
+**其他指令：**
 
 ```bash
-# 有視窗執行
-npm run e2e:headed -- --project=chromium
-
-# 調試模式
-npm run e2e:debug -- --project=chromium
-
-# UI 模式（交互式）
-npm run e2e:ui
-
-# 查看測試報告
-npm run e2e:report
-
-# 安裝 Playwright 瀏覽器
-npm run e2e:install
+npm run e2e:headed -- --project=chromium  # 有視窗執行
+npm run e2e:debug -- --project=chromium    # 調試模式
+npm run e2e:ui                             # UI 模式（交互式）
+npm run e2e:report                         # 查看測試報告
+npm run e2e:install                        # 安裝 Playwright 瀏覽器
 ```
 
-**注意**：
+**詳細說明：** [frontend/e2e/QUICKSTART.md](./frontend/e2e/QUICKSTART.md)
 
-- `npm run e2e`、`e2e:headed`、`e2e:debug` 都會自動執行 `db:reset`
-- 可以通過 `--` 後的參數傳遞給 Playwright，例如 `--project=chromium` 或 `-g "測試名稱"`
+---
 
-快速開始請參考：[frontend/e2e/QUICKSTART.md](./frontend/e2e/QUICKSTART.md)
+### 📊 測試對比表
+
+| 項目              | 後端 E2E 測試       | Frontend E2E 測試 |
+| ----------------- | ------------------- | ----------------- |
+| **指令**          | `npm run test:e2e`  | `npm run e2e`     |
+| **自動 db:reset** | ❌ 需要             | ✅ 自動           |
+| **測試對象**      | API 業務邏輯        | 前端 UI 流程      |
+| **執行環境**      | vitest-pool-workers | Playwright 瀏覽器 |
+| **測試平台**      | 後端 Worker         | Chromium / Mobile |
+| **適用場景**      | 驗證 API 正確性     | 驗證用戶操作流程  |
 
 ## API 文檔
 
