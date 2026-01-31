@@ -37,6 +37,25 @@ apiClient.interceptors.response.use(
       const toast = useToast();
       const errorMessage = response.data.error || '操作失敗，請重試';
 
+      // 特殊處理：無效 token - 清除會話並重定向
+      if (
+        errorMessage === 'Invalid token' ||
+        errorMessage === 'Invalid token or no token provided'
+      ) {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('user');
+        localStorage.removeItem('refresh_token');
+        toast.error('登入已過期，請重新登入');
+        window.location.href = '/login';
+        return Promise.reject({
+          response: {
+            status: 200,
+            data: response.data,
+          },
+          message: errorMessage,
+        });
+      }
+
       // 特定錯誤訊息映射
       const specificMessages: Record<string, string> = {
         您已經參與過此配對: errorMessage,
@@ -87,6 +106,7 @@ apiClient.interceptors.response.use(
           // 未授權，清除 token 並重定向到登入頁
           localStorage.removeItem('auth_token');
           localStorage.removeItem('user');
+          localStorage.removeItem('refresh_token');
           toast.error('登入已過期，請重新登入');
           window.location.href = '/login';
           break;
@@ -176,8 +196,9 @@ export class ApiService {
   }
 
   // 配對相關
-  static async getMatches() {
-    return apiClient.get('/matches');
+  static async getMatches(limit?: number) {
+    const params = limit ? { limit } : {};
+    return apiClient.get('/matches', { params });
   }
 
   static async createMatch(matchData: any) {

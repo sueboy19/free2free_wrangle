@@ -1,13 +1,14 @@
 import type { Context, Next } from 'hono';
 import type { Env } from '../types';
 import { JWTManager } from '../lib/jwt';
+import { Errors } from '../lib/errors';
 
 export const authMiddleware = async (c: Context<{ Bindings: Env }>, next: Next) => {
   try {
     const authHeader = c.req.header('Authorization');
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new Error('Authentication required');
+      throw Errors.unauthorized('Authentication required');
     }
 
     const token = authHeader.substring(7);
@@ -20,7 +21,7 @@ export const authMiddleware = async (c: Context<{ Bindings: Env }>, next: Next) 
       .first();
 
     if (!user) {
-      throw new Error('User not found');
+      throw Errors.notFound('User');
     }
 
     c.set('user' as never, {
@@ -35,8 +36,9 @@ export const authMiddleware = async (c: Context<{ Bindings: Env }>, next: Next) 
 
     await next();
   } catch (error) {
+    // 如果錯誤訊息包含 'token'，返回無效 token 錯誤
     if (error instanceof Error && error.message.includes('token')) {
-      throw new Error('Invalid token');
+      throw Errors.invalidToken();
     }
     throw error;
   }

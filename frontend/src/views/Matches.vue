@@ -47,7 +47,7 @@
       </div>
 
       <!-- 載入狀態 -->
-      <div v-if="isLoading" class="text-center py-12">
+      <div v-if="matchesStore.isLoading" class="text-center py-12">
         <div
           class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"
         ></div>
@@ -71,7 +71,7 @@
           <!-- 活動資訊 -->
           <div class="mb-4">
             <h3 class="text-lg font-semibold text-gray-900 mb-2">
-              {{ match.activity_title || match.activity?.title || '未知活動' }}
+              {{ match.activity?.title || '未知活動' }}
             </h3>
             <p class="text-gray-600 text-sm mb-3">
               {{ match.activity?.description }}
@@ -86,7 +86,7 @@
                   clip-rule="evenodd"
                 />
               </svg>
-              {{ match.location_name || match.activity?.location?.name || '未知地點' }}
+              {{ match.activity?.location?.name || '未知地點' }}
             </div>
 
             <!-- 時間資訊 -->
@@ -106,7 +106,7 @@
               <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              開局者: {{ match.organizer_name || match.organizer?.name || '未知' }}
+              開局者: {{ match.organizer?.name || '未知' }}
             </div>
           </div>
 
@@ -119,14 +119,17 @@
               查看詳情
             </router-link>
             <button
-              v-if="!hasParticipated(match.id) && !isMatchOrganizer(match.id)"
+              v-if="!matchesStore.hasParticipated(match.id) && !isMatchOrganizer(match.id)"
               @click="joinMatch(match.id)"
               :disabled="isJoining"
               class="flex-1 btn-primary text-sm"
             >
               {{ isJoining ? '加入中...' : '參與配對' }}
             </button>
-            <span v-if="hasParticipated(match.id)" class="flex-1 py-3 text-center text-sm">
+            <span
+              v-if="matchesStore.hasParticipated(match.id)"
+              class="flex-1 py-3 text-center text-sm"
+            >
               {{ getParticipationLabel(match.id) }}
             </span>
           </div>
@@ -139,26 +142,24 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useAuthStore } from '@/stores/auth';
-import ApiService from '@/services/api';
+import { useMatchesStore, type Match } from '@/stores/matches';
 import { useToast } from 'vue-toastification';
 import { format } from 'date-fns';
 import { zhTW } from 'date-fns/locale';
 import Navigation from '@/components/Navigation.vue';
 
 const authStore = useAuthStore();
+const matchesStore = useMatchesStore();
 const toast = useToast();
 
-const matches = ref<any[]>([]);
-const isLoading = ref(false);
 const isJoining = ref(false);
 const searchQuery = ref('');
 const selectedLocation = ref('');
 const selectedDate = ref('');
-const userParticipations = ref<Map<number, { status: string }>>(new Map());
 
 // 篩選後的配對
 const filteredMatches = computed(() => {
-  let filtered = matches.value;
+  let filtered = matchesStore.matches;
 
   // 過濾開局者自己的配對
   filtered = filtered.filter((match) => match.organizer_id !== authStore.user?.id);
@@ -167,7 +168,7 @@ const filteredMatches = computed(() => {
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase();
     filtered = filtered.filter(
-      (match) =>
+      (match: Match) =>
         match.activity?.title?.toLowerCase().includes(query) ||
         match.activity?.description?.toLowerCase().includes(query)
     );
@@ -176,14 +177,14 @@ const filteredMatches = computed(() => {
   // 地點篩選
   if (selectedLocation.value) {
     filtered = filtered.filter(
-      (match) => match.activity?.location?.id === parseInt(selectedLocation.value)
+      (match: Match) => match.activity?.location?.id === parseInt(selectedLocation.value)
     );
   }
 
   // 日期篩選
   if (selectedDate.value) {
     const selectedDateTime = new Date(selectedDate.value);
-    filtered = filtered.filter((match) => {
+    filtered = filtered.filter((match: Match) => {
       const matchDate = new Date(match.match_time);
       return matchDate.toDateString() === selectedDateTime.toDateString();
     });
@@ -196,7 +197,7 @@ const filteredMatches = computed(() => {
 const availableLocations = computed(() => {
   const locationMap = new Map<number, { id: number; name: string }>();
 
-  matches.value.forEach((match) => {
+  matchesStore.matches.forEach((match: Match) => {
     if (match.activity?.location) {
       const location = match.activity.location;
       locationMap.set(location.id, {
@@ -209,40 +210,15 @@ const availableLocations = computed(() => {
   return Array.from(locationMap.values()).sort((a, b) => a.id - b.id);
 });
 
-// 計算用戶對每個配對的參與狀態
-const getParticipationStatus = (matchId: number) => {
-  return userParticipations.value.get(matchId) || null;
-};
-
-const hasParticipated = (matchId: number) => {
-  const status = getParticipationStatus(matchId);
-  return !!status; // Any participation status (pending, approved, rejected) means user has participated
-};
-
-const isApproved = (matchId: number) => {
-  const status = getParticipationStatus(matchId);
-  return status && status.status === 'approved';
-};
-
-const isRejected = (matchId: number) => {
-  const status = getParticipationStatus(matchId);
-  return status && status.status === 'rejected';
-};
-
-const isPending = (matchId: number) => {
-  const status = getParticipationStatus(matchId);
-  return status && status.status === 'pending';
-};
-
 // 判斷是否為開局者
 const isMatchOrganizer = (matchId: number) => {
-  const match = matches.value.find((m) => m.id === matchId);
+  const match = matchesStore.matches.find((m: Match) => m.id === matchId);
   return match?.organizer_id === authStore.user?.id;
 };
 
 // 獲取參與狀態標籤
 const getParticipationLabel = (matchId: number) => {
-  const status = getParticipationStatus(matchId);
+  const status = matchesStore.getParticipationStatus(matchId);
   switch (status?.status) {
     case 'pending':
       return '待審核';
@@ -266,35 +242,15 @@ const formatDate = (date: string | number) => {
 // 載入配對列表
 const loadMatches = async () => {
   try {
-    isLoading.value = true;
-    const response = await ApiService.getMatches();
-    matches.value = Array.isArray(response.data?.data) ? response.data.data : [];
+    await matchesStore.fetchMatches();
 
     // 如果用戶已登入，獲取參與狀態
     if (authStore.user?.id) {
-      try {
-        const allMatchIds = matches.value.map((m: any) => m.id);
-        const participations = await Promise.all(
-          allMatchIds.map((id) => ApiService.getMatchParticipationStatus(id))
-        );
-
-        participations.forEach((response: any, index) => {
-          if (response.data?.has_participated) {
-            userParticipations.value.set(allMatchIds[index], {
-              status: response.data.participation_status,
-            });
-          }
-        });
-      } catch (error) {
-        console.error('無法獲取參與狀態:', error);
-      }
+      await matchesStore.fetchAllParticipationStatus();
     }
   } catch (error) {
     console.error('載入配對失敗:', error);
     toast.error('載入配對失敗');
-    matches.value = [];
-  } finally {
-    isLoading.value = false;
   }
 };
 
@@ -307,10 +263,10 @@ const joinMatch = async (matchId: number) => {
     }
 
     isJoining.value = true;
-    await ApiService.joinMatch(matchId);
+    await matchesStore.joinMatch(matchId);
     toast.success('成功參與配對！');
 
-    // 重新載入配對列表
+    // 重新載入配對列表和參與狀態
     await loadMatches();
   } catch (error) {
     console.error('參與配對失敗:', error);

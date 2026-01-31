@@ -4,6 +4,7 @@ import { FacebookOAuthProvider, InstagramOAuthProvider } from '../lib/oauth';
 import { JWTManager } from '../lib/jwt';
 import { SessionManager } from '../lib/session';
 import { authMiddleware } from '../middleware/auth';
+import { Errors } from '../lib/errors';
 
 const router = new Hono<{ Bindings: Env }>();
 
@@ -268,7 +269,7 @@ router.post('/auth/refresh', async (c) => {
     .first();
 
   if (!tokenRecord) {
-    throw new Error('Invalid token');
+    throw Errors.invalidToken();
   }
 
   const user = await c.env.DB.prepare('SELECT * FROM users WHERE id = ?')
@@ -276,7 +277,7 @@ router.post('/auth/refresh', async (c) => {
     .first();
 
   if (!user) {
-    throw new Error('User not found');
+    throw Errors.notFound('User');
   }
 
   const userData = {

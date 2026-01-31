@@ -136,7 +136,7 @@
         <!-- 今日配對預覽 -->
         <div class="card">
           <h3 class="text-lg font-semibold mb-4">今日推薦配對</h3>
-          <div v-if="isLoading" class="text-center py-8">
+          <div v-if="matchesStore.isLoading" class="text-center py-8">
             <div
               class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"
             ></div>
@@ -172,19 +172,22 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { computed, onMounted } from 'vue';
 import { useAuthStore } from '@/stores/auth';
-import ApiService from '@/services/api';
+import { useMatchesStore, type Match } from '@/stores/matches';
 import { format } from 'date-fns';
 import { zhTW } from 'date-fns/locale';
 
 const authStore = useAuthStore();
-const isLoading = ref(false);
-const featuredMatches = ref<any[]>([]);
-const todayMatches = ref<any[]>([]);
+const matchesStore = useMatchesStore();
 
-// 今日配對數量
-const todayMatchesCount = computed(() => todayMatches.value.length);
+// 今日配對數量（從推薦配對中計算）
+const todayMatchesCount = computed(() => {
+  const today = new Date().toDateString();
+  return matchesStore.matches.filter(
+    (match: Match) => new Date(match.match_time).toDateString() === today
+  ).length;
+});
 
 // 格式化日期
 const formatDate = (date: string | number) => {
@@ -194,41 +197,14 @@ const formatDate = (date: string | number) => {
   return format(d, 'MM月dd日 HH:mm', { locale: zhTW });
 };
 
-// 載入今日配對（統計用）
-const loadTodayMatches = async () => {
-  try {
-    const response = await ApiService.getMatches();
-    if (Array.isArray(response.data?.data)) {
-      const today = new Date().toDateString();
-      todayMatches.value = response.data.data.filter(
-        (match: any) => new Date(match.match_time).toDateString() === today
-      );
-    }
-  } catch (error) {
-    console.error('載入今日配對失敗:', error);
-  }
-};
+// 精選配對（只取前 6 筆）
+const featuredMatches = computed(() => {
+  return matchesStore.matches.slice(0, 6);
+});
 
-// 載入精選配對
-const loadFeaturedMatches = async () => {
-  try {
-    isLoading.value = true;
-    const response = await ApiService.getMatches();
-    featuredMatches.value = Array.isArray(response.data?.data)
-      ? response.data.data.slice(0, 6)
-      : [];
-  } catch (error) {
-    console.error('載入配對失敗:', error);
-    featuredMatches.value = [];
-  } finally {
-    isLoading.value = false;
-  }
-};
-
-onMounted(() => {
+onMounted(async () => {
   if (authStore.isAuthenticated) {
-    loadFeaturedMatches();
-    loadTodayMatches();
+    await matchesStore.fetchFeaturedMatches();
   }
 });
 </script>

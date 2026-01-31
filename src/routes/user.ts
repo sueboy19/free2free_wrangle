@@ -1,10 +1,18 @@
 import { Hono } from 'hono';
 import { authMiddleware, optionalAuthMiddleware } from '../middleware/auth';
 import type { Env } from '../types';
+import { Errors } from '../lib/errors';
 
 const router = new Hono<{ Bindings: Env }>();
 
+// 硬上限：防止請求過多資料
+const MAX_MATCHES_PER_PAGE = 100;
+
 router.get('/matches', optionalAuthMiddleware, async (c) => {
+  // 安全解析 limit：使用 Math.min 強制限制上限
+  const requestedLimit = parseInt(c.req.query('limit') || '50');
+  const limit = Math.min(isNaN(requestedLimit) ? 50 : requestedLimit, MAX_MATCHES_PER_PAGE);
+
   const result = await c.env.DB.prepare(
     `SELECT
        m.id as id,
@@ -24,14 +32,15 @@ router.get('/matches', optionalAuthMiddleware, async (c) => {
        l.latitude as location_latitude,
        l.longitude as location_longitude,
        u.name as organizer_name
-     FROM matches m
-     LEFT JOIN activities a ON m.activity_id = a.id
-     LEFT JOIN locations l ON a.location_id = l.id
-     LEFT JOIN users u ON m.organizer_id = u.id
-     WHERE m.status = ? AND m.match_time > datetime('now')
-     ORDER BY m.match_time ASC`
+      FROM matches m
+      LEFT JOIN activities a ON m.activity_id = a.id
+      LEFT JOIN locations l ON a.location_id = l.id
+      LEFT JOIN users u ON m.organizer_id = u.id
+      WHERE m.status = ? AND m.match_time > datetime('now')
+      ORDER BY m.match_time ASC
+      LIMIT ?`
   )
-    .bind('open')
+    .bind('open', limit)
     .all();
 
   // Flatten result to include activity object
@@ -69,7 +78,7 @@ router.get('/matches', optionalAuthMiddleware, async (c) => {
 router.get('/user/matches', authMiddleware, async (c) => {
   const user = c.get('user' as never) as any;
   if (!user?.id) {
-    throw new Error('User not found');
+    throw Errors.notFound('User');
   }
   const status = c.req.query('status') || 'completed';
 
