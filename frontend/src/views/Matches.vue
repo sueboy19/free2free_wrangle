@@ -66,8 +66,27 @@
         <div
           v-for="match in filteredMatches"
           :key="match.id"
-          class="card hover:shadow-lg transition-shadow duration-200"
+          :class="[
+            'card hover:shadow-lg transition-shadow duration-200',
+            isMyMatch(match) ? 'border-l-4 border-l-primary-500 bg-primary-50' : '',
+          ]"
         >
+          <!-- 自己的配對標記 -->
+          <div v-if="isMyMatch(match)" class="flex items-center justify-between mb-2">
+            <span
+              class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800"
+            >
+              <svg class="mr-1 w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                <path
+                  fill-rule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                  clip-rule="evenodd"
+                />
+              </svg>
+              你的配對
+            </span>
+          </div>
+
           <!-- 活動資訊 -->
           <div class="mb-4">
             <h3 class="text-lg font-semibold text-gray-900 mb-2">
@@ -114,12 +133,16 @@
           <div class="flex space-x-2" v-if="match.id">
             <router-link
               :to="`/matches/${match.id}`"
-              class="flex-1 btn-secondary text-center text-sm"
+              :class="
+                isMyMatch(match)
+                  ? 'flex-1 btn-primary text-center text-sm'
+                  : 'flex-1 btn-secondary text-center text-sm'
+              "
             >
-              查看詳情
+              {{ isMyMatch(match) ? '查看詳情' : '查看詳情' }}
             </router-link>
             <button
-              v-if="!matchesStore.hasParticipated(match.id) && !isMatchOrganizer(match.id)"
+              v-if="!isMyMatch(match) && !matchesStore.hasParticipated(match.id)"
               @click="joinMatch(match.id)"
               :disabled="isJoining"
               class="flex-1 btn-primary text-sm"
@@ -127,7 +150,7 @@
               {{ isJoining ? '加入中...' : '參與配對' }}
             </button>
             <span
-              v-if="matchesStore.hasParticipated(match.id)"
+              v-if="!isMyMatch(match) && matchesStore.hasParticipated(match.id)"
               class="flex-1 py-3 text-center text-sm"
             >
               {{ getParticipationLabel(match.id) }}
@@ -157,12 +180,14 @@ const searchQuery = ref('');
 const selectedLocation = ref('');
 const selectedDate = ref('');
 
+// 判斷是否為自己的配對
+const isMyMatch = (match: Match) => {
+  return match.organizer_id === authStore.user?.id;
+};
+
 // 篩選後的配對
 const filteredMatches = computed(() => {
   let filtered = matchesStore.matches;
-
-  // 過濾開局者自己的配對
-  filtered = filtered.filter((match) => match.organizer_id !== authStore.user?.id);
 
   // 搜尋篩選
   if (searchQuery.value) {
