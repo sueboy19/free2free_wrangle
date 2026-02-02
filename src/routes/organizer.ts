@@ -1,11 +1,9 @@
 import { Hono } from 'hono';
-import type { D1Database } from '@cloudflare/workers-types';
 import { authMiddleware, organizerAuthMiddleware } from '../middleware/auth';
-import type { Env } from '../types';
 
 const router = new Hono<{ Bindings: Env }>();
 
-// Helper function to verify user is the organizer
+// Helper function to verify user is not organizer
 async function verifyOrganizer(
   db: D1Database,
   matchId: number,

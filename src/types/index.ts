@@ -1,18 +1,3 @@
-export interface Env {
-  DB: D1Database;
-  KV: KVNamespace;
-  JWT_SECRET: string;
-  SESSION_KEY: string;
-  FACEBOOK_KEY: string;
-  FACEBOOK_SECRET: string;
-  INSTAGRAM_KEY: string;
-  INSTAGRAM_SECRET: string;
-  BACKEND_API_BASE_URL: string;
-  FRONTEND_URL: string;
-  CORS_ORIGINS: string;
-  ENVIRONMENT?: string;
-}
-
 export interface User {
   id: number;
   social_id: string;

@@ -1,6 +1,5 @@
 import { Hono } from 'hono';
 import { adminAuthMiddleware } from '../middleware/auth';
-import type { Env } from '../types';
 
 const router = new Hono<{ Bindings: Env }>();
 

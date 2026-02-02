@@ -1,5 +1,4 @@
 import type { Context, Next } from 'hono';
-import type { Env } from '../types';
 import { JWTManager } from '../lib/jwt';
 import { Errors } from '../lib/errors';
 

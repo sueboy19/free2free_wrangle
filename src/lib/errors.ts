@@ -1,5 +1,3 @@
-import { AppError } from '../middleware/error';
-
 export const ErrorCodes = {
   VALIDATION_ERROR: 'VALIDATION_ERROR',
   UNAUTHORIZED: 'UNAUTHORIZED',
@@ -11,6 +9,17 @@ export const ErrorCodes = {
   INVALID_TOKEN: 'INVALID_TOKEN',
   TOKEN_EXPIRED: 'TOKEN_EXPIRED',
 } as const;
+
+export class AppError extends Error {
+  constructor(
+    public statusCode: number,
+    public code: string,
+    message: string
+  ) {
+    super(message);
+    this.name = 'AppError';
+  }
+}
 
 export const Errors = {
   validation: (message: string) => new AppError(400, ErrorCodes.VALIDATION_ERROR, message),

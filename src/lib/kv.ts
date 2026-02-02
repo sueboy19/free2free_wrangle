@@ -1,5 +1,3 @@
-import type { KVNamespace } from '@cloudflare/workers-types';
-
 export class KVStore {
   constructor(private kv: KVNamespace) {}
 

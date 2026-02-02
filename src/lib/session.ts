@@ -1,4 +1,3 @@
-import type { D1Database } from '@cloudflare/workers-types';
 import type { User } from '../types';
 
 export interface Session {

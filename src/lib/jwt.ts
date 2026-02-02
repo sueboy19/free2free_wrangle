@@ -1,5 +1,4 @@
 import { SignJWT, jwtVerify, type JWTPayload as JoseJWTPayload } from 'jose';
-import type { JWTPayload, User } from '../types';
 
 const JWT_ALGORITHM = 'HS256';
 const ACCESS_TOKEN_EXPIRY = '15m';

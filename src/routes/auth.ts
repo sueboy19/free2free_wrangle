@@ -1,5 +1,4 @@
 import { Hono } from 'hono';
-import type { Env } from '../types';
 import { FacebookOAuthProvider, InstagramOAuthProvider } from '../lib/oauth';
 import { JWTManager } from '../lib/jwt';
 import { SessionManager } from '../lib/session';
