@@ -62,6 +62,10 @@ npm run dev
 
 - **後端 E2E 測試** (`npm run test:e2e`) - 測試 API，需手動執行 `db:reset`
 - **Frontend E2E 測試** (`npm run e2e`) - 測試前端 UI，自動執行 `db:reset`
+```
+npm run e2e -- --project=chromium
+npm run e2e -- --project=mobile
+```
 
 詳細說明請參考 [E2E 測試](#e2e-測試) 區塊。
 

@@ -9,12 +9,6 @@
         <!-- 桌面端導航 -->
         <div class="hidden md:flex items-center space-x-4">
           <router-link
-            to="/"
-            class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
-          >
-            首頁
-          </router-link>
-          <router-link
             to="/matches"
             class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
           >
@@ -83,13 +77,6 @@
       <!-- 移動端選單 -->
       <div v-if="mobileMenuOpen" class="md:hidden pb-4">
         <div class="space-y-2">
-          <router-link
-            to="/"
-            @click="mobileMenuOpen = false"
-            class="block text-gray-700 hover:text-gray-900 hover:bg-gray-100 px-3 py-2 rounded-md text-base font-medium"
-          >
-            首頁
-          </router-link>
           <router-link
             to="/matches"
             @click="mobileMenuOpen = false"

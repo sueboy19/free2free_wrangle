@@ -11,12 +11,6 @@
           <!-- 桌面版導航 -->
           <div class="hidden md:flex items-center space-x-4" v-if="authStore.isAuthenticated">
             <router-link
-              to="/"
-              class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
-            >
-              首頁
-            </router-link>
-            <router-link
               to="/matches"
               class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
             >
@@ -54,9 +48,6 @@
       <!-- 手機版導航 -->
       <div class="md:hidden" v-if="authStore.isAuthenticated">
         <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-gray-50">
-          <router-link to="/" class="block px-3 py-2 text-gray-700 hover:text-gray-900">
-            首頁
-          </router-link>
           <router-link to="/matches" class="block px-3 py-2 text-gray-700 hover:text-gray-900">
             配對列表
           </router-link>
