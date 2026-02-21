@@ -1,34 +1,32 @@
 <template>
-  <div class="min-h-screen bg-gray-50">
+  <div class="min-h-screen">
     <!-- 導航列 -->
     <Navigation />
 
     <!-- 主要內容 -->
-    <main class="max-w-4xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+    <main class="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8 page-enter-up">
       <!-- 載入狀態 -->
-      <div v-if="isLoading" class="text-center py-12">
-        <div
-          class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"
-        ></div>
-        <p class="text-gray-500 mt-4">載入中...</p>
+      <div v-if="isLoading" class="text-center py-16">
+        <div class="spinner h-12 w-12 mx-auto"></div>
+        <p class="text-gray-400 mt-4">載入中...</p>
       </div>
 
       <!-- 配對詳情 -->
       <div v-else-if="match" class="space-y-6">
         <!-- 配對基本資訊 -->
-        <div class="card">
-          <div class="flex justify-between items-start mb-4">
-            <h1 class="text-2xl font-bold text-gray-900">
+        <div class="card-elevated">
+          <div class="flex justify-between items-start mb-6">
+            <h1 class="text-3xl font-bold text-gray-900">
               {{ match.activity_title || match.activity?.title || '未知活動' }}
             </h1>
             <span
               :class="[
-                'inline-flex px-3 py-1 text-sm font-semibold rounded-full',
+                'badge',
                 match.status === 'open'
-                  ? 'bg-green-100 text-green-800'
+                  ? 'badge-success'
                   : match.status === 'completed'
-                    ? 'bg-blue-100 text-blue-800'
-                    : 'bg-red-100 text-red-800',
+                    ? 'badge-primary'
+                    : 'badge-danger',
               ]"
             >
               {{
@@ -41,34 +39,62 @@
             </span>
           </div>
 
-          <p class="text-gray-600 mb-4">{{ match.activity?.description }}</p>
+          <p class="text-gray-500 mb-6 text-lg leading-relaxed">
+            {{ match.activity?.description }}
+          </p>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div class="flex items-center text-gray-500">
-              <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                <path
-                  fill-rule="evenodd"
-                  d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
-                  clip-rule="evenodd"
-                />
-              </svg>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="flex items-start">
+              <div
+                class="w-12 h-12 rounded-xl bg-primary-50 flex items-center justify-center mr-4 flex-shrink-0"
+              >
+                <svg
+                  class="w-6 h-6 text-primary-500"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                  />
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                  />
+                </svg>
+              </div>
               <div>
-                <p class="font-medium">{{ match.activity?.location?.name }}</p>
-                <p class="text-sm">{{ match.activity?.location?.address }}</p>
+                <p class="font-semibold text-gray-900">{{ match.activity?.location?.name }}</p>
+                <p class="text-gray-500">{{ match.activity?.location?.address }}</p>
               </div>
             </div>
 
-            <div class="flex items-center text-gray-500">
-              <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                <path
-                  fill-rule="evenodd"
-                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
-                  clip-rule="evenodd"
-                />
-              </svg>
+            <div class="flex items-start">
+              <div
+                class="w-12 h-12 rounded-xl bg-accent-coral/10 flex items-center justify-center mr-4 flex-shrink-0"
+              >
+                <svg
+                  class="w-6 h-6 text-accent-coral"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              </div>
               <div>
-                <p class="font-medium">{{ formatDate(match.match_time) }}</p>
-                <p class="text-sm">目標人數: {{ match.activity?.target_count }} 人</p>
+                <p class="font-semibold text-gray-900">{{ formatDate(match.match_time) }}</p>
+                <p class="text-gray-500">目標人數: {{ match.activity?.target_count }} 人</p>
               </div>
             </div>
           </div>
@@ -76,44 +102,66 @@
 
         <!-- 開局者資訊 -->
         <div class="card">
-          <h2 class="text-lg font-semibold text-gray-900 mb-3">開局者資訊</h2>
+          <h2 class="text-xl font-bold text-gray-900 mb-4">開局者資訊</h2>
           <div class="flex items-center space-x-4">
-            <img
-              :src="match.organizer?.avatar_url || '/default-avatar.svg'"
-              @error="handleImageError"
-              :alt="match.organizer?.name"
-              class="h-12 w-12 rounded-full object-cover"
-            />
+            <div class="relative">
+              <img
+                :src="match.organizer?.avatar_url || '/default-avatar.svg'"
+                @error="handleImageError"
+                :alt="match.organizer?.name"
+                class="h-16 w-16 rounded-2xl object-cover ring-4 ring-primary-50"
+              />
+              <div
+                class="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-white"
+              ></div>
+            </div>
             <div>
-              <p class="font-medium text-gray-900">{{ match.organizer?.name }}</p>
-              <p class="text-sm text-gray-500">{{ match.organizer?.email }}</p>
+              <p class="font-bold text-lg text-gray-900">{{ match.organizer?.name }}</p>
+              <p class="text-gray-500">{{ match.organizer?.email }}</p>
             </div>
           </div>
         </div>
 
         <!-- 參與者列表 (如果是開局者或參與者) -->
         <div v-if="isOrganizer || hasOrganizerAccess" class="card">
-          <h2 class="text-lg font-semibold text-gray-900 mb-3">
+          <h2 class="text-xl font-bold text-gray-900 mb-4">
             {{ isOrganizer ? '參與者管理' : '已申請的參與者' }}
           </h2>
-          <div v-if="participants.length === 0" class="text-center py-8">
+          <div v-if="participants.length === 0" class="text-center py-12">
+            <div
+              class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4"
+            >
+              <svg
+                class="w-8 h-8 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
+                />
+              </svg>
+            </div>
             <p class="text-gray-500">還沒有人申請參與</p>
           </div>
           <div v-else class="space-y-3">
             <div
               v-for="participant in participants"
               :key="participant.id"
-              class="flex items-center justify-between p-3 border rounded-lg"
+              class="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-white hover:shadow-md transition-all duration-200"
             >
-              <div class="flex items-center space-x-3">
+              <div class="flex items-center space-x-4">
                 <img
                   :src="participant.user?.avatar_url || '/default-avatar.svg'"
                   @error="handleImageError"
                   :alt="participant.user?.name"
-                  class="h-8 w-8 rounded-full object-cover"
+                  class="h-12 w-12 rounded-xl object-cover"
                 />
                 <div>
-                  <p class="font-medium text-gray-900">{{ participant.user?.name }}</p>
+                  <p class="font-semibold text-gray-900">{{ participant.user?.name }}</p>
                   <p class="text-sm text-gray-500">{{ participant.user?.email }}</p>
                 </div>
               </div>
@@ -122,12 +170,12 @@
               <div v-if="isOrganizer" class="flex items-center space-x-2">
                 <span
                   :class="[
-                    'px-2 py-1 text-xs font-semibold rounded-full',
+                    'badge',
                     participant.status === 'pending'
-                      ? 'bg-yellow-100 text-yellow-800'
+                      ? 'badge-warning'
                       : participant.status === 'approved'
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-red-100 text-red-800',
+                        ? 'badge-success'
+                        : 'badge-danger',
                   ]"
                 >
                   {{
@@ -143,7 +191,7 @@
                   v-if="participant.status === 'pending'"
                   @click="approveParticipant(participant.id)"
                   :disabled="isProcessing"
-                  class="btn-primary text-xs px-3 py-1"
+                  class="px-4 py-2 bg-green-500 hover:bg-green-600 text-white text-sm font-semibold rounded-xl transition-colors disabled:opacity-50"
                 >
                   通過
                 </button>
@@ -151,7 +199,7 @@
                   v-if="participant.status === 'pending'"
                   @click="rejectParticipant(participant.id)"
                   :disabled="isProcessing"
-                  class="btn-secondary text-xs px-3 py-1"
+                  class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-semibold rounded-xl transition-colors disabled:opacity-50"
                 >
                   拒絕
                 </button>
@@ -162,24 +210,26 @@
 
         <!-- 評分功能 (已完成配對) -->
         <div v-if="match.status === 'completed'" class="card">
-          <h2 class="text-lg font-semibold text-gray-900 mb-3">配對評分</h2>
+          <h2 class="text-xl font-bold text-gray-900 mb-4">配對評分</h2>
           <div v-if="!isOrganizer && !hasReviewed" class="space-y-4">
-            <p class="text-gray-600">請為這次配對體驗評分</p>
+            <p class="text-gray-500 mb-4">請為這次配對體驗評分</p>
             <form @submit.prevent="submitReview">
-              <div class="mb-4">
+              <div class="mb-6">
                 <label class="label">評分 (1-5星)</label>
-                <div class="flex space-x-1">
+                <div class="flex space-x-2">
                   <button
                     v-for="rating in 5"
                     :key="rating"
                     type="button"
                     @click="reviewForm.score = rating"
+                    class="p-2 rounded-xl transition-all duration-200 hover:scale-110"
                     :class="[
-                      'p-1',
-                      rating <= reviewForm.score ? 'text-yellow-400' : 'text-gray-300',
+                      rating <= reviewForm.score
+                        ? 'text-yellow-400'
+                        : 'text-gray-200 hover:text-gray-300',
                     ]"
                   >
-                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                    <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
                       <path
                         d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"
                       />
@@ -188,12 +238,12 @@
                 </div>
               </div>
 
-              <div class="mb-4">
+              <div class="mb-6">
                 <label class="label">評論</label>
                 <textarea
                   v-model="reviewForm.comment"
                   class="input"
-                  rows="3"
+                  rows="4"
                   placeholder="分享您的配對體驗..."
                 ></textarea>
               </div>
@@ -204,7 +254,24 @@
             </form>
           </div>
 
-          <div v-else class="text-center py-4">
+          <div v-else class="text-center py-8">
+            <div
+              class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4"
+            >
+              <svg
+                class="w-8 h-8 text-green-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+            </div>
             <p class="text-gray-500">您已經為這次配對評過分了</p>
           </div>
         </div>
@@ -215,14 +282,22 @@
             v-if="!isOrganizer && match.status === 'open' && !hasParticipated"
             @click="joinMatch"
             :disabled="isJoining"
-            class="flex-1 btn-primary"
+            class="flex-1 btn-accent py-4 text-lg"
           >
             {{ isJoining ? '加入中...' : '參與配對' }}
           </button>
 
           <span
             v-if="!isOrganizer && match.status === 'open' && hasParticipated"
-            class="flex-1 btn-secondary text-center"
+            class="flex-1 py-4 text-center text-lg font-semibold rounded-full"
+            :class="{
+              'bg-yellow-50 text-yellow-600':
+                participants.find((p: any) => p.user_id === authStore.user?.id)?.status ===
+                'pending',
+              'bg-green-50 text-green-600':
+                participants.find((p: any) => p.user_id === authStore.user?.id)?.status ===
+                'approved',
+            }"
           >
             {{
               participants.find((p: any) => p.user_id === authStore.user?.id)?.status === 'pending'
@@ -231,7 +306,7 @@
             }}
           </span>
 
-          <router-link to="/matches" class="flex-1 btn-secondary text-center">
+          <router-link to="/matches" class="flex-1 btn-secondary text-center py-4 text-lg">
             返回配對列表
           </router-link>
         </div>

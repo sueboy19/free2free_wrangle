@@ -1,18 +1,18 @@
 <template>
-  <div class="min-h-screen bg-gray-50">
+  <div class="min-h-screen">
     <!-- 導航列 -->
     <Navigation />
 
     <!-- 主要內容 -->
-    <main class="max-w-3xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+    <main class="max-w-3xl mx-auto py-8 px-4 sm:px-6 lg:px-8 page-enter-up">
       <!-- 頁面標題 -->
-      <div class="mb-6">
-        <h1 class="text-2xl font-bold text-gray-900">創建配對</h1>
-        <p class="text-gray-600">發起一個新的配對活動</p>
+      <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">創建配對</h1>
+        <p class="text-gray-500 text-lg">發起一個新的配對活動</p>
       </div>
 
       <!-- 創建表單 -->
-      <div class="card">
+      <div class="card-elevated">
         <form @submit.prevent="createMatch">
           <!-- 活動選擇 -->
           <div class="mb-6">
@@ -76,27 +76,73 @@
           </div>
 
           <!-- 錯誤訊息 -->
-          <div
-            v-if="errorMessage"
-            class="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded"
+          <transition
+            enter-active-class="transition duration-200 ease-out"
+            enter-from-class="transform -translate-y-2 opacity-0"
+            enter-to-class="transform translate-y-0 opacity-100"
+            leave-active-class="transition duration-150 ease-in"
+            leave-from-class="transform translate-y-0 opacity-100"
+            leave-to-class="transform -translate-y-2 opacity-0"
           >
-            {{ errorMessage }}
-          </div>
+            <div
+              v-if="errorMessage"
+              class="mb-6 p-4 bg-red-50 border border-red-100 text-red-600 rounded-xl flex items-center"
+            >
+              <svg
+                class="w-5 h-5 mr-3 flex-shrink-0"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              {{ errorMessage }}
+            </div>
+          </transition>
 
           <!-- 成功訊息 -->
-          <div
-            v-if="successMessage"
-            class="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded"
+          <transition
+            enter-active-class="transition duration-200 ease-out"
+            enter-from-class="transform -translate-y-2 opacity-0"
+            enter-to-class="transform translate-y-0 opacity-100"
+            leave-active-class="transition duration-150 ease-in"
+            leave-from-class="transform translate-y-0 opacity-100"
+            leave-to-class="transform -translate-y-2 opacity-0"
           >
-            {{ successMessage }}
-          </div>
+            <div
+              v-if="successMessage"
+              class="mb-6 p-4 bg-green-50 border border-green-100 text-green-600 rounded-xl flex items-center"
+            >
+              <svg
+                class="w-5 h-5 mr-3 flex-shrink-0"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              {{ successMessage }}
+            </div>
+          </transition>
 
           <!-- 提交按鈕 -->
-          <div class="flex space-x-4">
-            <button type="submit" :disabled="isSubmitting" class="flex-1 btn-primary">
+          <div class="flex space-x-4 pt-4">
+            <button type="submit" :disabled="isSubmitting" class="flex-1 btn-accent py-4 text-lg">
               {{ isSubmitting ? '創建中...' : '創建配對' }}
             </button>
-            <router-link to="/matches" class="flex-1 btn-secondary text-center"> 取消 </router-link>
+            <router-link to="/matches" class="flex-1 btn-secondary text-center py-4 text-lg">
+              取消
+            </router-link>
           </div>
         </form>
       </div>

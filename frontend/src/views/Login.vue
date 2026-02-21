@@ -1,12 +1,36 @@
 <template>
-  <div class="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+  <div class="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8 page-enter">
+    <!-- 背景裝飾 -->
+    <div class="fixed inset-0 overflow-hidden -z-10">
+      <div
+        class="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-primary-200/50 to-accent-purple/30 rounded-full blur-3xl"
+      ></div>
+      <div
+        class="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-accent-coral/20 to-accent-mint/30 rounded-full blur-3xl"
+      ></div>
+    </div>
+
     <div class="sm:mx-auto sm:w-full sm:max-w-md">
-      <h2 class="mt-6 text-center text-3xl font-bold text-gray-900">登入買一送一配對</h2>
-      <p class="mt-2 text-center text-sm text-gray-600">使用您的社交媒體帳號登入</p>
+      <div class="text-center">
+        <div
+          class="w-20 h-20 bg-gradient-to-br from-primary-500 to-accent-purple rounded-3xl mx-auto mb-6 flex items-center justify-center shadow-glow"
+        >
+          <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+            />
+          </svg>
+        </div>
+        <h2 class="text-3xl font-bold text-gray-900 mb-2">登入買一送一配對</h2>
+        <p class="text-gray-500">使用您的社交媒體帳號登入</p>
+      </div>
     </div>
 
     <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-      <div class="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+      <div class="card-elevated py-8 px-6 sm:px-10">
         <!-- 登入選項 -->
         <div class="space-y-4">
           <button
@@ -169,37 +193,71 @@
         <div class="mt-6">
           <div class="relative">
             <div class="absolute inset-0 flex items-center">
-              <div class="w-full border-t border-gray-300" />
+              <div class="w-full border-t border-gray-200" />
             </div>
             <div class="relative flex justify-center text-sm">
-              <span class="px-2 bg-white text-gray-500">說明</span>
+              <span class="px-4 bg-white text-gray-400 font-medium">說明</span>
             </div>
           </div>
 
           <div class="mt-6 text-center">
-            <p class="text-sm text-gray-600">
+            <p class="text-sm text-gray-500 leading-relaxed">
               登入後即可瀏覽配對機會、創建配對活動，並與其他用戶進行配對。
             </p>
           </div>
         </div>
 
         <!-- 錯誤訊息 -->
-        <div
-          v-if="errorMessage"
-          class="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded"
+        <transition
+          enter-active-class="transition duration-200 ease-out"
+          enter-from-class="transform -translate-y-2 opacity-0"
+          enter-to-class="transform translate-y-0 opacity-100"
+          leave-active-class="transition duration-150 ease-in"
+          leave-from-class="transform translate-y-0 opacity-100"
+          leave-to-class="transform -translate-y-2 opacity-0"
         >
-          {{ errorMessage }}
-        </div>
+          <div
+            v-if="errorMessage"
+            class="mt-4 p-4 bg-red-50 border border-red-100 text-red-600 rounded-xl text-sm flex items-center"
+          >
+            <svg
+              class="w-5 h-5 mr-2 flex-shrink-0"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            {{ errorMessage }}
+          </div>
+        </transition>
 
         <!-- 載入指示器 -->
-        <div v-if="isLoading" class="mt-4 text-center text-sm text-gray-600">
-          正在跳轉到登入頁面...
+        <div v-if="isLoading" class="mt-4 text-center">
+          <div class="spinner h-6 w-6 mx-auto"></div>
+          <p class="text-sm text-gray-400 mt-2">正在跳轉到登入頁面...</p>
         </div>
       </div>
 
       <!-- 返回首頁 -->
       <div class="mt-6 text-center">
-        <router-link to="/" class="text-sm text-primary-600 hover:text-primary-500">
+        <router-link
+          to="/"
+          class="text-sm text-gray-500 hover:text-primary-600 font-medium transition-colors inline-flex items-center"
+        >
+          <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M10 19l-7-7m0 0l7-7m-7 7h18"
+            />
+          </svg>
           返回首頁
         </router-link>
       </div>
