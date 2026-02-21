@@ -1,11 +1,41 @@
 import { Hono } from 'hono';
-import { FacebookOAuthProvider, InstagramOAuthProvider } from '../lib/oauth';
+import { OAuthProviderFactory, generateCodeVerifier, type OAuthConfig } from '../lib/oauth';
 import { JWTManager } from '../lib/jwt';
 import { SessionManager } from '../lib/session';
 import { authMiddleware } from '../middleware/auth';
 import { Errors } from '../lib/errors';
+import type { SocialProvider } from '../types';
 
 const router = new Hono<{ Bindings: Env }>();
+
+// Supported OAuth providers (Instagram 暫時關閉)
+const SUPPORTED_PROVIDERS: SocialProvider[] = ['facebook', 'google', 'line'];
+
+// Get environment variable name for provider credentials
+function getProviderEnvKey(provider: string, type: 'id' | 'secret'): string {
+  const prefix = provider.toUpperCase();
+  return type === 'id' ? `${prefix}_KEY` : `${prefix}_SECRET`;
+}
+
+// Create OAuth config from environment
+function createOAuthConfig(provider: string, env: Env, redirectUri: string): OAuthConfig {
+  const keyVar = getProviderEnvKey(provider, 'id');
+  const secretVar = getProviderEnvKey(provider, 'secret');
+
+  const envRecord = env as unknown as Record<string, string | undefined>;
+  const clientId = envRecord[keyVar];
+  const clientSecret = envRecord[secretVar];
+
+  if (!clientId || !clientSecret) {
+    throw new Error(`Missing OAuth credentials for ${provider}`);
+  }
+
+  return {
+    clientId,
+    clientSecret,
+    redirectUri,
+  };
+}
 
 // This must come BEFORE /auth/:provider to avoid route conflicts
 router.get('/auth/me', authMiddleware, async (c) => {
@@ -19,54 +49,57 @@ router.get('/auth/me', authMiddleware, async (c) => {
 });
 
 router.get('/auth/:provider', async (c) => {
-  const provider = c.req.param('provider');
+  const provider = c.req.param('provider') as SocialProvider;
 
-  if (!['facebook', 'instagram'].includes(provider)) {
+  if (!SUPPORTED_PROVIDERS.includes(provider)) {
     throw new Error('Invalid OAuth provider');
   }
+
   // 使用固定的前端回調 URL（從環境變量讀取，或使用默認值）
   const frontendCallbackUrl =
     `${c.env.FRONTEND_URL}/auth/callback` || 'http://localhost:3000/auth/callback';
 
   const redirectUri = `${c.env.BACKEND_API_BASE_URL}/auth/${provider}/callback`;
 
-  let oauthProvider;
-  if (provider === 'facebook') {
-    oauthProvider = new FacebookOAuthProvider(
-      c.env.FACEBOOK_KEY,
-      c.env.FACEBOOK_SECRET,
-      redirectUri
-    );
-  } else {
-    oauthProvider = new InstagramOAuthProvider(
-      c.env.INSTAGRAM_KEY,
-      c.env.INSTAGRAM_SECRET,
-      redirectUri
-    );
-  }
+  const config = createOAuthConfig(provider, c.env, redirectUri);
+  const oauthProvider = OAuthProviderFactory.createProvider(provider, config);
 
   // 生成隨機 state 並存儲到數據庫（防止 CSRF 攻擊）
   const state = crypto.randomUUID();
   const stateExpiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString(); // 5分鐘過期
 
-  await c.env.DB.prepare(
-    `INSERT INTO oauth_states (state, expires_at, created_at)
-     VALUES (?, ?, datetime('now'))`
-  )
-    .bind(state, stateExpiresAt)
-    .run();
+  // 對於需要 PKCE 的 provider (Google, Line)，生成並存儲 codeVerifier
+  let codeVerifier: string | undefined;
+  if (OAuthProviderFactory.requiresPKCE(provider)) {
+    codeVerifier = generateCodeVerifier();
+    await c.env.DB.prepare(
+      `INSERT INTO oauth_states (state, code_verifier, expires_at, created_at)
+       VALUES (?, ?, ?, datetime('now'))`
+    )
+      .bind(state, codeVerifier, stateExpiresAt)
+      .run();
+  } else {
+    await c.env.DB.prepare(
+      `INSERT INTO oauth_states (state, expires_at, created_at)
+       VALUES (?, ?, datetime('now'))`
+    )
+      .bind(state, stateExpiresAt)
+      .run();
+  }
 
-  const authUrl = oauthProvider.getAuthUrl(state);
+  const authUrl = OAuthProviderFactory.requiresPKCE(provider)
+    ? oauthProvider.getAuthUrl(state, codeVerifier!)
+    : oauthProvider.getAuthUrl(state);
 
   return c.redirect(authUrl, 302);
 });
 
 router.get('/auth/:provider/callback', async (c) => {
-  const provider = c.req.param('provider');
+  const provider = c.req.param('provider') as SocialProvider;
   const code = c.req.query('code');
   const state = c.req.query('state');
 
-  // 檢查 Facebook/Instagram 返回的錯誤參數（用戶取消授權等）
+  // 檢查 OAuth provider 返回的錯誤參數（用戶取消授權等）
   const error = c.req.query('error');
   const errorCode = c.req.query('error_code');
   const errorReason = c.req.query('error_reason');
@@ -135,7 +168,7 @@ router.get('/auth/:provider/callback', async (c) => {
     throw new Error('授權碼無效，請重新登入');
   }
 
-  // 驗證 state（防止 CSRF 攻擊）
+  // 驗證 state（防止 CSRF 攻擊）並取得 code_verifier（如果需要 PKCE）
   const stateRecord = await c.env.DB.prepare(
     'SELECT * FROM oauth_states WHERE state = ? AND expires_at > datetime("now")'
   )
@@ -157,28 +190,23 @@ router.get('/auth/:provider/callback', async (c) => {
   // 刪除已使用的 state（一次性使用）
   await c.env.DB.prepare('DELETE FROM oauth_states WHERE state = ?').bind(state).run();
 
+  // 取得 code_verifier（對於需要 PKCE 的 provider）
+  const codeVerifier = stateRecord.code_verifier as string | undefined;
+
   // 使用固定的前端回調 URL（從環境變量讀取）
   const frontendCallbackUrl =
     `${c.env.FRONTEND_URL}/auth/callback` || 'http://localhost:3000/auth/callback';
 
   const redirectUri = `${c.env.BACKEND_API_BASE_URL}/auth/${provider}/callback`;
 
-  let oauthProvider;
-  if (provider === 'facebook') {
-    oauthProvider = new FacebookOAuthProvider(
-      c.env.FACEBOOK_KEY,
-      c.env.FACEBOOK_SECRET,
-      redirectUri
-    );
-  } else {
-    oauthProvider = new InstagramOAuthProvider(
-      c.env.INSTAGRAM_KEY,
-      c.env.INSTAGRAM_SECRET,
-      redirectUri
-    );
-  }
+  const config = createOAuthConfig(provider, c.env, redirectUri);
+  const oauthProvider = OAuthProviderFactory.createProvider(provider, config);
 
-  const accessToken = await oauthProvider.exchangeCodeForToken(code);
+  // 對於需要 PKCE 的 provider，傳入 codeVerifier
+  const accessToken = OAuthProviderFactory.requiresPKCE(provider)
+    ? await oauthProvider.exchangeCodeForToken(code, codeVerifier)
+    : await oauthProvider.exchangeCodeForToken(code);
+
   const profile = await oauthProvider.getUserProfile(accessToken);
 
   let user = await c.env.DB.prepare(
@@ -209,7 +237,7 @@ router.get('/auth/:provider/callback', async (c) => {
   const userData = {
     id: user.id as number,
     social_id: user.social_id as string,
-    social_provider: user.social_provider as 'facebook' | 'instagram',
+    social_provider: user.social_provider as SocialProvider,
     name: user.name as string,
     email: user.email as string,
     avatar_url: user.avatar_url as string | undefined,
@@ -282,7 +310,7 @@ router.post('/auth/refresh', async (c) => {
   const userData = {
     id: user.id as number,
     social_id: user.social_id as string,
-    social_provider: user.social_provider as 'facebook' | 'instagram',
+    social_provider: user.social_provider as SocialProvider,
     name: user.name as string,
     email: user.email as string,
     avatar_url: user.avatar_url as string | undefined,
@@ -364,7 +392,7 @@ router.post('/auth/exchange-code', async (c) => {
   const userData = {
     id: user.id as number,
     social_id: user.social_id as string,
-    social_provider: user.social_provider as 'facebook' | 'instagram',
+    social_provider: user.social_provider as SocialProvider,
     name: user.name as string,
     email: user.email as string,
     avatar_url: user.avatar_url as string | undefined,
@@ -446,7 +474,7 @@ router.post('/auth/mock', async (c) => {
     const userData = {
       id: user.id as number,
       social_id: user.social_id as string,
-      social_provider: user.social_provider as 'facebook' | 'instagram',
+      social_provider: user.social_provider as SocialProvider,
       name: user.name as string,
       email: user.email as string,
       avatar_url: user.avatar_url as string | undefined,

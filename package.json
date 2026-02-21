@@ -31,15 +31,16 @@
     "deploy": "npm run typecheck && wrangler deploy"
   },
   "dependencies": {
+    "arctic": "^3.7.0",
     "hono": "^4.11.4",
     "jose": "^6.1.3"
   },
   "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "^0.10.0",
+    "@cloudflare/vitest-pool-workers": "^0.12.14",
     "@types/node": "^25.0.8",
-    "@typescript-eslint/eslint-plugin": "^8.53.0",
-    "@typescript-eslint/parser": "^8.53.0",
-    "eslint": "^9.39.2",
+    "@typescript-eslint/eslint-plugin": "^6.15.0",
+    "@typescript-eslint/parser": "^6.15.0",
+    "eslint": "^10.0.1",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.5",
     "prettier": "^3.7.4",

@@ -1,7 +1,9 @@
+export type SocialProvider = 'facebook' | 'instagram' | 'google' | 'line';
+
 export interface User {
   id: number;
   social_id: string;
-  social_provider: 'facebook' | 'instagram';
+  social_provider: SocialProvider;
   name: string;
   email: string;
   avatar_url?: string;

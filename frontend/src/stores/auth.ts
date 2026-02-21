@@ -89,7 +89,8 @@ export const useAuthStore = defineStore('auth', () => {
   };
 
   // 登入方法 - 使用 redirect 方式（支援手機和桌面）
-  const login = async (provider: 'facebook' | 'instagram') => {
+  // Instagram 暫時關閉
+  const login = async (provider: 'facebook' | 'google' | 'line') => {
     try {
       // 構建 OAuth URL（後端會自動處理 redirect）
       const baseUrl = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080').replace(

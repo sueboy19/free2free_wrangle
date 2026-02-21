@@ -7,5 +7,11 @@ FACEBOOK_SECRET=your_local_facebook_app_secret
 INSTAGRAM_KEY=your_local_instagram_app_key
 INSTAGRAM_SECRET=your_local_instagram_app_secret
 
+GOOGLE_KEY=your_google_client_id
+GOOGLE_SECRET=your_google_client_secret
+
+LINE_KEY=your_line_channel_id
+LINE_SECRET=your_line_channel_secret
+
 CORS_ORIGINS=http://localhost:5173,http://localhost:3000
 BACKEND_API_BASE_URL=
