@@ -30,7 +30,15 @@
             <p class="text-gray-600">{{ authStore.user?.email }}</p>
             <p class="text-sm text-gray-500">
               登入方式：{{
-                authStore.user?.social_provider === 'facebook' ? 'Facebook' : 'Instagram'
+                authStore.user?.social_provider === 'facebook'
+                  ? 'Facebook'
+                  : authStore.user?.social_provider === 'instagram'
+                    ? 'Instagram'
+                    : authStore.user?.social_provider === 'google'
+                      ? 'Google'
+                      : authStore.user?.social_provider === 'line'
+                        ? 'Line'
+                        : authStore.user?.social_provider
               }}
             </p>
             <div class="mt-2">
