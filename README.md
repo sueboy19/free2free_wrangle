@@ -224,6 +224,7 @@ wrangler deploy --env production
 
 # 部署 Frontend
 cd frontend
+npm run build
 wrangler pages deploy dist --project-name=free2free --branch=master
 ```
 
@@ -246,7 +247,7 @@ wrangler pages deploy dist --project-name=free2free --branch=master
 
 3. 部署：
    ```bash
-   wrangler pages deploy frontend/dist --project-name=free2free
+   wrangler pages deploy dist --project-name=free2free  --branch=master
    ```
 
 詳細說明請參考：[frontend/README.md](./frontend/README.md)
