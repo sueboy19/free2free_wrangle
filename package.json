@@ -28,7 +28,7 @@
     "e2e:ui": "npm run test:ui --prefix frontend/e2e",
     "e2e:report": "npm run test:report --prefix frontend/e2e",
     "e2e:install": "npm run test:install --prefix frontend/e2e",
-    "deploy": "npm run typecheck && wrangler deploy"
+    "deploy": "npm run typecheck && wrangler deploy --env production"
   },
   "dependencies": {
     "arctic": "^3.7.0",
