@@ -1,4 +1,5 @@
 export type SocialProvider = 'facebook' | 'instagram' | 'google' | 'line';
+export type StoreBrand = '7-11' | 'familymart';
 
 export interface User {
   id: number;
@@ -34,6 +35,8 @@ export interface Activity {
   description?: string;
   created_by: number;
   location?: Location;
+  store_brand?: StoreBrand;
+  metadata?: string;
 }
 
 export interface Match {
@@ -121,4 +124,30 @@ export interface RefreshTokenRequest {
 export interface LogoutRequest {
   refresh_token?: string;
   session_id?: string;
+}
+
+export interface CoffeePromoItem {
+  id: number;
+  store_brand: string;
+  product_name: string;
+  deal_type: string;
+  deal_category: string;
+  start_date: string | null;
+  end_date: string | null;
+  status: string;
+  source: string;
+  is_recurring: number;
+  recurring_pattern: string | null;
+  source_url: string;
+  scraped_at: string;
+  created_at: string;
+  updated_at: string;
+  product_category: string;
+}
+
+export interface CoffeePromoResponse {
+  data: Record<string, Record<string, { label: string; items: CoffeePromoItem[] }>>;
+  total: number;
+  limit: number;
+  offset: number;
 }

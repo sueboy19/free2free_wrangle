@@ -51,9 +51,29 @@
       <div v-if="activeTab === 'activities' && !isLoading">
         <div class="mb-4 flex justify-between items-center">
           <h2 class="text-lg font-semibold">配對活動列表</h2>
-          <button @click="showActivityForm = !showActivityForm" class="btn-primary">
-            {{ showActivityForm ? '取消' : '新增活動' }}
-          </button>
+          <div class="flex space-x-3">
+            <button
+              v-if="selectedActivityIds.length > 0"
+              @click="batchDeleteActivities"
+              class="bg-red-500 hover:bg-red-600 text-white text-sm py-2 px-4 rounded-lg font-medium transition-colors"
+            >
+              刪除已選 ({{ selectedActivityIds.length }})
+            </button>
+            <button
+              @click="importCoffeePromotions"
+              :disabled="isImporting"
+              class="btn-secondary flex items-center"
+            >
+              <svg v-if="isImporting" class="animate-spin -ml-1 mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+              </svg>
+              {{ isImporting ? '匯入中...' : '匯入咖啡優惠' }}
+            </button>
+            <button @click="showActivityForm = !showActivityForm" class="btn-primary">
+              {{ showActivityForm ? '取消' : '新增活動' }}
+            </button>
+          </div>
         </div>
 
         <!-- 新增活動表單 -->
@@ -107,10 +127,18 @@
             <table class="min-w-full divide-y divide-gray-200">
               <thead class="bg-gray-50">
                 <tr>
+                  <th class="px-4 py-3 w-12">
+                    <input type="checkbox" :checked="selectedActivityIds.length === activities.length && activities.length > 0" @change="toggleSelectAll" class="w-5 h-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500 cursor-pointer" />
+                  </th>
                   <th
                     class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                   >
                     活動標題
+                  </th>
+                  <th
+                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    品牌
                   </th>
                   <th
                     class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
@@ -136,9 +164,20 @@
               </thead>
               <tbody class="bg-white divide-y divide-gray-200">
                 <tr v-for="activity in activities" :key="activity.id">
+                  <td class="px-4 py-4 w-12">
+                    <input type="checkbox" :value="activity.id" v-model="selectedActivityIds" class="w-5 h-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500 cursor-pointer" />
+                  </td>
                   <td class="px-6 py-4 whitespace-nowrap">
                     <div class="text-sm font-medium text-gray-900">{{ activity.title }}</div>
                     <div class="text-sm text-gray-500">{{ activity.description }}</div>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <span v-if="activity.store_brand" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                      :class="activity.store_brand === '7-11' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'"
+                    >
+                      {{ activity.store_brand === 'familymart' ? '全家' : activity.store_brand }}
+                    </span>
+                    <span v-else class="text-sm text-gray-400">-</span>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {{ activity.location_name || '未知地點' }}
@@ -147,7 +186,7 @@
                     {{ activity.target_count }}
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {{ activity.created_by }}
+                    {{ activity.creator_name || activity.created_by }}
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <button
@@ -300,9 +339,11 @@ const toast = useToast();
 
 const isLoading = ref(false);
 const isSubmitting = ref(false);
+const isImporting = ref(false);
 const activeTab = ref('activities');
 const showActivityForm = ref(false);
 const showLocationForm = ref(false);
+const selectedActivityIds = ref<number[]>([]);
 
 const activities = ref<any[]>([]);
 const locations = ref<any[]>([]);
@@ -408,6 +449,42 @@ const deleteActivity = async (id: number) => {
       console.error('刪除活動失敗:', error);
       toast.error('刪除活動失敗');
     }
+  }
+};
+
+// 匯入咖啡促銷
+const importCoffeePromotions = async () => {
+  try {
+    isImporting.value = true;
+    const response = await ApiService.importCoffeePromotions();
+    const result = response.data?.data;
+    toast.success(`匯入完成！新增 ${result.created} 筆，跳過 ${result.skipped} 筆已存在`);
+    await loadActivities();
+  } catch (error) {
+    console.error('匯入咖啡優惠失敗:', error);
+    toast.error('匯入咖啡優惠失敗');
+  } finally {
+    isImporting.value = false;
+  }
+};
+
+// 全選/取消全選
+const toggleSelectAll = (e: Event) => {
+  const checked = (e.target as HTMLInputElement).checked;
+  selectedActivityIds.value = checked ? activities.value.map((a: any) => a.id) : [];
+};
+
+// 批次刪除
+const batchDeleteActivities = async () => {
+  if (!confirm(`確定要刪除 ${selectedActivityIds.value.length} 個活動嗎？`)) return;
+  try {
+    await ApiService.batchDeleteActivities(selectedActivityIds.value);
+    toast.success(`已刪除 ${selectedActivityIds.value.length} 個活動`);
+    selectedActivityIds.value = [];
+    await loadActivities();
+  } catch (error) {
+    console.error('批次刪除失敗:', error);
+    toast.error('批次刪除失敗');
   }
 };
 

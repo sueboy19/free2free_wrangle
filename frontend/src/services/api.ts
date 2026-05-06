@@ -174,6 +174,10 @@ export class ApiService {
     return apiClient.delete(`/admin/activities/${id}`);
   }
 
+  static async batchDeleteActivities(ids: number[]) {
+    return apiClient.post('/admin/activities/batch-delete', { ids });
+  }
+
   // 地點管理
   static async getLocations() {
     return apiClient.get('/locations');
@@ -249,6 +253,15 @@ export class ApiService {
 
   static async dislikeReview(reviewId: number) {
     return apiClient.post(`/reviews/${reviewId}/like`, { is_like: false });
+  }
+
+  // 咖啡促銷相關
+  static async getCoffeePromotions() {
+    return apiClient.get('/promotions');
+  }
+
+  static async importCoffeePromotions() {
+    return apiClient.post('/admin/import-coffee-promotions');
   }
 }
 

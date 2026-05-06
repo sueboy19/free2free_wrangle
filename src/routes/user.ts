@@ -7,6 +7,19 @@ const router = new Hono<{ Bindings: Env }>();
 // 硬上限：防止請求過多資料
 const MAX_MATCHES_PER_PAGE = 100;
 
+// 取得咖啡促銷活動列表（公開）
+router.get('/promotions', async (c) => {
+  const result = await c.env.DB.prepare(
+    `SELECT a.*, l.name as location_name, l.address as location_address, l.latitude as location_latitude, l.longitude as location_longitude
+     FROM activities a
+     LEFT JOIN locations l ON a.location_id = l.id
+     WHERE a.store_brand IS NOT NULL
+     ORDER BY a.id DESC`
+  ).all();
+
+  return c.json({ data: result.results || [] });
+});
+
 router.get('/matches', optionalAuthMiddleware, async (c) => {
   // 安全解析 limit：使用 Math.min 強制限制上限
   const requestedLimit = parseInt(c.req.query('limit') || '50');
@@ -25,6 +38,8 @@ router.get('/matches', optionalAuthMiddleware, async (c) => {
        a.description,
        a.created_by,
        a.location_id,
+       a.store_brand,
+       a.metadata,
        l.id as location_db_id,
        l.name as location_name,
        l.address as location_address,
@@ -54,6 +69,8 @@ router.get('/matches', optionalAuthMiddleware, async (c) => {
       title: match.title,
       target_count: match.target_count,
       description: match.description,
+      store_brand: match.store_brand,
+      metadata: match.metadata,
       location: {
         id: match.location_db_id,
         name: match.location_name,
@@ -94,6 +111,8 @@ router.get('/user/matches', authMiddleware, async (c) => {
        a.description,
        a.created_by,
        a.location_id,
+       a.store_brand,
+       a.metadata,
        l.id as location_db_id,
        l.name as location_name,
        l.address as location_address,
@@ -123,6 +142,8 @@ router.get('/user/matches', authMiddleware, async (c) => {
       title: match.title,
       target_count: match.target_count,
       description: match.description,
+      store_brand: match.store_brand,
+      metadata: match.metadata,
       location: {
         id: match.location_db_id,
         name: match.location_name,
@@ -158,6 +179,8 @@ router.get('/matches/:id', optionalAuthMiddleware, async (c) => {
        a.description,
        a.created_by,
        a.location_id,
+       a.store_brand,
+       a.metadata,
        l.id as location_db_id,
        l.name as location_name,
        l.address as location_address,
@@ -196,6 +219,8 @@ router.get('/matches/:id', optionalAuthMiddleware, async (c) => {
       id: result.activity_db_id,
       title: result.title,
       description: result.description,
+      store_brand: result.store_brand,
+      metadata: result.metadata,
       target_count: result.target_count,
       location: {
         id: result.location_db_id,

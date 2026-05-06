@@ -57,7 +57,15 @@
           <div v-if="selectedActivity" class="mb-6 p-4 bg-gray-50 rounded-lg">
             <h3 class="font-semibold text-gray-900 mb-2">配對預覽</h3>
             <div class="space-y-2 text-sm">
-              <p><span class="font-medium">活動：</span>{{ selectedActivity.title }}</p>
+              <p class="flex items-center">
+                <span class="font-medium mr-2">活動：</span>
+                <span v-if="selectedActivity.store_brand" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mr-2"
+                  :class="selectedActivity.store_brand === '7-11' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'"
+                >
+                  {{ selectedActivity.store_brand === 'familymart' ? '全家' : selectedActivity.store_brand }}
+                </span>
+                {{ selectedActivity.title }}
+              </p>
               <p>
                 <span class="font-medium">地點：</span
                 >{{ selectedActivity.location?.name || '未設定' }}
@@ -152,13 +160,14 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import ApiService from '@/services/api';
 import { useToast } from 'vue-toastification';
 import Navigation from '@/components/Navigation.vue';
 
 const router = useRouter();
+const route = useRoute();
 const authStore = useAuthStore();
 const toast = useToast();
 
@@ -195,6 +204,11 @@ const loadActivities = async () => {
     isLoading.value = true;
     const response = await ApiService.getActivities();
     activities.value = Array.isArray(response.data?.data) ? response.data.data : [];
+    // 從 query param 預選活動
+    const preselectedId = route.query.activity_id;
+    if (preselectedId) {
+      formData.value.activity_id = String(preselectedId);
+    }
   } catch (error) {
     console.error('載入活動失敗:', error);
     toast.error('載入活動失敗');

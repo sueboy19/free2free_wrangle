@@ -150,15 +150,17 @@ export class DB {
   async createActivity(activity: Omit<Activity, 'id' | 'location'>): Promise<Activity> {
     const result = await this.db
       .prepare(
-        `INSERT INTO activities (title, target_count, location_id, description, created_by)
-         VALUES (?, ?, ?, ?, ?)`
+        `INSERT INTO activities (title, target_count, location_id, description, created_by, store_brand, metadata)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`
       )
       .bind(
         activity.title,
         activity.target_count,
         activity.location_id,
         activity.description || null,
-        activity.created_by
+        activity.created_by,
+        (activity as any).store_brand || null,
+        (activity as any).metadata || null
       )
       .run();
 
@@ -217,6 +219,35 @@ export class DB {
   async deleteActivity(id: number): Promise<boolean> {
     const result = await this.db.prepare('DELETE FROM activities WHERE id = ?').bind(id).run();
     return (result.meta.changes || 0) > 0;
+  }
+
+  async findActivityByStoreBrandAndProduct(storeBrand: string, productName: string): Promise<Activity | null> {
+    const activity = await this.db
+      .prepare(
+        `SELECT * FROM activities WHERE store_brand = ? AND JSON_EXTRACT(metadata, '$.product_name') = ? LIMIT 1`
+      )
+      .bind(storeBrand, productName)
+      .first<Activity>();
+
+    if (!activity) return null;
+
+    const location = await this.getLocationById(activity.location_id);
+    return { ...activity, location: location || undefined };
+  }
+
+  async listPromotions(): Promise<Activity[]> {
+    const result = await this.db
+      .prepare(`SELECT * FROM activities WHERE store_brand IS NOT NULL ORDER BY id DESC`)
+      .all<Activity>();
+
+    const activities = result.results || [];
+
+    for (const activity of activities) {
+      const location = await this.getLocationById(activity.location_id);
+      (activity as any).location = location || undefined;
+    }
+
+    return activities;
   }
 
   // Match operations

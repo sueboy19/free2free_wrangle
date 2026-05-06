@@ -127,6 +127,49 @@
           </p>
         </div>
 
+        <!-- 咖啡買一送一 -->
+        <div class="card-elevated mb-10" v-if="coffeePromotions.length > 0">
+          <div class="flex items-center justify-between mb-6">
+            <div class="flex items-center">
+              <div class="w-10 h-10 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl flex items-center justify-center mr-3 shadow">
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8h1a4 4 0 010 8h-1M3 8h14v9a4 4 0 01-4 4H7a4 4 0 01-4-4V8zm0 0V6a2 2 0 012-2h2m4-2v2m0 0h2" />
+                </svg>
+              </div>
+              <div>
+                <h3 class="text-2xl font-bold text-gray-900">咖啡買一送一</h3>
+                <p class="text-gray-500 text-sm mt-0.5">最新便利商店咖啡優惠，一鍵開團</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div
+              v-for="promo in coffeePromotions"
+              :key="promo.id"
+              class="bg-white rounded-2xl p-5 border border-gray-100 hover:border-gray-200 hover:shadow-md transition-all duration-300"
+            >
+              <div class="flex items-start justify-between mb-3">
+                <span
+                  class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                  :class="promo.store_brand === '7-11' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'"
+                >
+                  {{ promo.store_brand === 'familymart' ? '全家' : promo.store_brand }}
+                </span>
+              </div>
+              <h4 class="font-bold text-gray-900 mb-3 leading-snug text-sm">
+                {{ getPromoName(promo) }}
+              </h4>
+              <router-link
+                :to="`/matches/create?activity_id=${promo.id}`"
+                class="block w-full py-2 text-center text-sm font-semibold text-white bg-gradient-to-r from-amber-400 to-orange-500 rounded-xl hover:from-amber-500 hover:to-orange-600 transition-all shadow-sm"
+              >
+                開團去
+              </router-link>
+            </div>
+          </div>
+        </div>
+
         <!-- 快速操作 -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
           <div class="card-elevated group">
@@ -317,14 +360,40 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useAuthStore } from '@/stores/auth';
 import { useMatchesStore, type Match } from '@/stores/matches';
 import { format } from 'date-fns';
 import { zhTW } from 'date-fns/locale';
+import ApiService from '@/services/api';
 
 const authStore = useAuthStore();
 const matchesStore = useMatchesStore();
+
+// 咖啡促銷
+const coffeePromotions = ref<any[]>([]);
+
+const getPromoName = (promo: any) => {
+  if (promo.metadata) {
+    try {
+      const meta = JSON.parse(promo.metadata);
+      return meta.product_name || promo.title;
+    } catch {
+      return promo.title;
+    }
+  }
+  return promo.title;
+};
+
+const loadCoffeePromotions = async () => {
+  try {
+    const response = await ApiService.getCoffeePromotions();
+    const data = Array.isArray(response.data?.data) ? response.data.data : [];
+    coffeePromotions.value = data.slice(0, 6);
+  } catch (error) {
+    console.error('載入咖啡促銷失敗:', error);
+  }
+};
 
 // 今日配對數量（從推薦配對中計算）
 const todayMatchesCount = computed(() => {
@@ -349,7 +418,10 @@ const featuredMatches = computed(() => {
 
 onMounted(async () => {
   if (authStore.isAuthenticated) {
-    await matchesStore.fetchFeaturedMatches();
+    await Promise.all([
+      matchesStore.fetchFeaturedMatches(),
+      loadCoffeePromotions(),
+    ]);
   }
 });
 </script>
